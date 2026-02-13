@@ -15,9 +15,10 @@ function App() {
 
     // Gère la déconnexion
     const handleLogout = () => {
-        setCurrentUser(null);
-        setView('login');
-    };
+    localStorage.removeItem('token'); // On vide le badge de sécurité
+    setCurrentUser(null);
+    setView('login');
+};
 
     // Fonctions de navigation simple
     const goToRegister = () => setView('register');

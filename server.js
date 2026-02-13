@@ -10,8 +10,10 @@ import themeRoutes from './routes/themes.js';
 import attributionRoutes from './routes/attribution.js';
 import memoireRoutes from './routes/memoires.js';
 import soutenanceRoutes from './routes/soutenances.js'; 
-
 import { auditLog } from './middleware/securityMiddleware.js'; 
+
+import userRoutes from './routes/users.js';
+import encadrementRoutes from './routes/encadrements.js';
 
 // Configuration de __dirname car il n'existe pas par défaut en module
 const __filename = fileURLToPath(import.meta.url);
@@ -36,6 +38,8 @@ app.use('/api/memoires', memoireRoutes);
 app.use('/api/soutenances', soutenanceRoutes);
 app.use('/api', auditLog); // <--- 1. Audit d'abord
 
+app.use('/api/users', userRoutes);
+app.use('/api/encadrements', encadrementRoutes);
 // Route de test
 app.get('/', (req, res) => {
     res.send('🚀 Serveur CFI Backend OK');

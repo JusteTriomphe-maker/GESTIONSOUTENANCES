@@ -22,8 +22,13 @@ const Login = ({ onLogin, onGoToRegister }) => {
                 body: JSON.stringify({ email, password })
             });
             const data = await response.json();
-            if (response.ok) onLogin(data.user);
-            else setMessage(data.message || "Erreur de connexion");
+            if (response.ok) {
+                // AJOUTE CETTE LIGNE :
+                localStorage.setItem('token', data.token); 
+                onLogin(data.user);
+            } else {
+                setMessage(data.message || "Erreur de connexion");
+            }
         } catch (error) { setMessage("Erreur serveur"); }
     };
 
