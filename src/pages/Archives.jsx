@@ -1,19 +1,14 @@
 import { useState, useEffect } from 'react';
+import { apiCall } from '../config/api.js';
 
 const Archives = () => {
     const [archives, setArchives] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const colors = {
-        primary: '#234666',
-        secondary: '#64748B',
-        info: '#0EA5E9',
-        bg: '#F8FAFC',
-        text: '#1E293B'
-    };
+    // Styles moved to Tailwind classes
 
     useEffect(() => {
-        fetch('/api/soutenances?archive=true')
+        apiCall('/api/soutenances?archive=true')
             .then(res => res.json())
             .then(data => setArchives(data))
             .catch(err => console.error(err));
@@ -25,86 +20,61 @@ const Archives = () => {
         sout.theme_titre.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const styles = {
-        card: { backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)', marginBottom: '30px' },
-        th: { padding: '15px', textAlign: 'left', borderBottom: '2px solid #F1F5F9', color: colors.secondary, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' },
-        td: { padding: '15px', borderBottom: '1px solid #F1F5F9', fontSize: '14px', color: colors.text },
-        searchInput: { padding: '10px 15px', borderRadius: '8px', border: '1px solid #E2E8F0', width: '300px', outline: 'none', fontSize: '14px' }
-    };
+    // Tailwind will handle layout and styling
 
     return (
-        <div style={{ animation: 'fadeIn 0.5s ease' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+        <div className="space-y-6">
+            <div className="flex items-start justify-between">
                 <div>
-                    <h2 style={{ margin: 0, color: colors.primary }}>📁 Archives des Soutenances</h2>
-                    <p style={{ margin: '5px 0 0', color: colors.secondary, fontSize: '14px' }}>
-                        Historique complet des travaux de fin de cycle validés.
-                    </p>
+                    <h2 className="text-[#234666] text-lg font-semibold">📁 Archives des Soutenances</h2>
+                    <p className="text-sm text-gray-500 mt-1">Historique complet des travaux de fin de cycle validés.</p>
                 </div>
-                
-                <input 
-                    type="text" 
-                    placeholder="Rechercher un étudiant ou un sujet..." 
-                    style={styles.searchInput}
+
+                <input
+                    type="text"
+                    placeholder="Rechercher un étudiant ou un sujet..."
+                    className="px-3 py-2 border rounded-md border-gray-200 w-full max-w-sm"
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
 
-            <div style={{ ...styles.card, padding: '10px' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="bg-white p-2 rounded-lg shadow">
+                <table className="w-full table-auto">
                     <thead>
-                        <tr>
-                            <th style={styles.th}>Période</th>
-                            <th style={styles.th}>Étudiant</th>
-                            <th style={styles.th}>Sujet du Mémoire</th>
-                            <th style={styles.th}>Statut</th>
+                        <tr className="text-xs text-gray-500 uppercase">
+                            <th className="px-4 py-3 text-left">Période</th>
+                            <th className="px-4 py-3 text-left">Étudiant</th>
+                            <th className="px-4 py-3 text-left">Sujet du Mémoire</th>
+                            <th className="px-4 py-3 text-left">Statut</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredArchives.length > 0 ? filteredArchives.map((sout) => (
-                            <tr key={sout.id_soutenance} style={{ transition: '0.2s' }}>
-                                <td style={styles.td}>
-                                    <div style={{ fontWeight: '600' }}>
-                                        {new Date(sout.date_soutenance).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
-                                    </div>
-                                    <small style={{ color: colors.secondary }}>Session de {sout.heure_soutenance}</small>
+                            <tr key={sout.id_soutenance} className="hover:bg-gray-50 transition">
+                                <td className="px-4 py-4 align-top">
+                                    <div className="font-semibold">{new Date(sout.date_soutenance).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                                    <small className="text-gray-500">Session de {sout.heure_soutenance}</small>
                                 </td>
-                                <td style={styles.td}>
-                                    <div style={{ fontWeight: 'bold', color: colors.primary }}>
-                                        {sout.nom_etudiant.toUpperCase()} {sout.prenom_etudiant}
-                                    </div>
+                                <td className="px-4 py-4">
+                                    <div className="font-bold text-[#234666]">{sout.nom_etudiant?.toUpperCase()} {sout.prenom_etudiant}</div>
                                 </td>
-                                <td style={styles.td}>
-                                    <div style={{ maxWidth: '450px', lineHeight: '1.4' }}>{sout.theme_titre}</div>
+                                <td className="px-4 py-4">
+                                    <div className="max-w-[450px] leading-6">{sout.theme_titre}</div>
                                 </td>
-                                <td style={styles.td}>
-                                    <span style={{ 
-                                        padding: '4px 12px', 
-                                        borderRadius: '6px', 
-                                        backgroundColor: '#F0F9FF', 
-                                        color: '#0369A1', 
-                                        fontSize: '12px', 
-                                        fontWeight: 'bold',
-                                        border: '1px solid #BAE6FD'
-                                    }}>
-                                        Dossier archivé
-                                    </span>
+                                <td className="px-4 py-4">
+                                    <span className="inline-block px-3 py-1 rounded bg-blue-50 text-blue-700 text-sm font-semibold border border-blue-100">Dossier archivé</span>
                                 </td>
                             </tr>
                         )) : (
                             <tr>
-                                <td colSpan="4" style={{ padding: '50px', textAlign: 'center', color: colors.secondary }}>
-                                    {searchTerm ? "Aucun résultat pour cette recherche." : "Le coffre-fort est vide pour le moment."}
-                                </td>
+                                <td colSpan="4" className="py-16 text-center text-gray-500">{searchTerm ? "Aucun résultat pour cette recherche." : "Le coffre-fort est vide pour le moment."}</td>
                             </tr>
                         )}
                     </tbody>
                 </table>
             </div>
 
-            <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '12px', color: colors.secondary }}>
-                Propulsé par le système de gestion des soutenances — {new Date().getFullYear()}
-            </div>
+            <div className="text-center text-sm text-gray-500">Propulsé par le système de gestion des soutenances — {new Date().getFullYear()}</div>
         </div>
     );
 };

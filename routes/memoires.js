@@ -1,17 +1,21 @@
 import express from 'express';
+import { verifyToken } from '../middleware/securityMiddleware.js';
+import { checkPermission } from '../middleware/authorizationMiddleware.js';
 import { uploadMemoire, getAllMemoires, validateMemoire, rejectMemoire } from '../controllers/memoireController.js';
 import upload from '../config/multerConfig.js';
 
 const router = express.Router();
 
-// Déposer un mémoire (avec fichier)
-router.post('/add', upload.single('fichier'), uploadMemoire);
+// Déposer un mémoire : IMPÉTRANT (UC-PS-01)
+router.post('/add', verifyToken, checkPermission('UC-PS-01'), upload.single('fichier'), uploadMemoire);
 
-// Lister tous les mémoires
-router.get('/', getAllMemoires);
+// Lister tous les mémoires (authentifiés seulement)
+router.get('/', verifyToken, getAllMemoires);
 
-// ✅ Nouvelles routes pour changer le statut
-router.put('/validate/:id', validateMemoire);
-router.put('/reject/:id', rejectMemoire);
+// Valider un mémoire : ENSEIGNANT (directeur) ou COORDONNATEUR (UC-PS-02)
+router.put('/validate/:id', verifyToken, checkPermission('UC-PS-02'), validateMemoire);
+
+// Rejeter un mémoire : ENSEIGNANT (directeur) ou COORDONNATEUR (UC-PS-03)
+router.put('/reject/:id', verifyToken, checkPermission('UC-PS-03'), rejectMemoire);
 
 export default router;

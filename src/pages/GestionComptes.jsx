@@ -1,36 +1,22 @@
 import { useState, useEffect } from 'react';
+import { apiCall } from '../config/api.js';
 
 const GestionComptes = () => {
-    const [users, setUsers] = useState([]); // Initialement un tableau vide
+    const [users, setUsers] = useState([]);
     const [formData, setFormData] = useState({ nom: '', email: '', password: '', role: 'ETUDIANT' });
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(''); // Pour afficher l'erreur serveur
-
-    const colors = {
-        primary: '#234666',
-        success: '#10B981',
-        danger: '#D34053',
-    };
+    const [error, setError] = useState('');
 
     const fetchUsers = async () => {
         try {
-            const res = await fetch('/api/users');
-            // Vérification cruciale : est-ce que c'est bien du JSON ?
-            if (!res.ok) throw new Error("Erreur serveur");
-            
+            const res = await apiCall('/api/users');
+            if (!res.ok) throw new Error('Erreur serveur');
             const data = await res.json();
-            
-            // Sécurité : si ce n'est pas un tableau, on met un tableau vide
-            if (Array.isArray(data)) {
-                setUsers(data);
-            } else {
-                console.error("Format de données invalide", data);
-                setUsers([]); 
-            }
+            setUsers(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error(err);
-            setError("Impossible de charger les utilisateurs (Vérifiez la console Backend)");
-            setUsers([]); // Évite le crash .map
+            setError('Impossible de charger les utilisateurs (Vérifiez la console Backend)');
+            setUsers([]);
         }
     };
 
@@ -42,77 +28,70 @@ const GestionComptes = () => {
         e.preventDefault();
         setLoading(true);
         setError('');
-
         try {
-            const res = await fetch('/api/users/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-
+            const res = await apiCall('/api/users/add', { method: 'POST', body: JSON.stringify(formData) });
             const data = await res.json();
             if (res.ok) {
-                alert("Utilisateur créé !"); // Simple alerte pour confirmer
+                alert('Utilisateur créé !');
                 setFormData({ nom: '', email: '', password: '', role: 'ETUDIANT' });
                 fetchUsers();
             } else {
-                setError(data.message || "Erreur création");
+                setError(data.message || 'Erreur création');
             }
         } catch (err) {
-            setError("Erreur de connexion au serveur");
+            setError('Erreur de connexion au serveur');
         } finally {
             setLoading(false);
         }
     };
 
-    const styles = {
-        input: { padding: '10px', borderRadius: '6px', border: '1px solid #E2E8F0', width: '100%', boxSizing: 'border-box', marginBottom: '10px' }
-    };
-
     return (
-        <div>
-            <h2 style={{ marginBottom: '20px', color: colors.primary }}>🔐 Gestion des Comptes</h2>
+        <div className="p-8">
+            <h2 className="text-xl font-semibold mb-4">🔐 Gestion des Comptes</h2>
 
-            {error && <div style={{ color: colors.danger, background: '#FEE2E2', padding: '10px', borderRadius: '6px', marginBottom: '20px' }}>{error}</div>}
+            {error && <div className="mb-4 p-3 rounded bg-red-50 text-red-700">{error}</div>}
 
-            {/* Formulaire */}
-            <div style={{ background: '#F8FAFC', padding: '20px', borderRadius: '12px', marginBottom: '30px', border: '1px solid #E2E8F0' }}>
-                <h4 style={{ marginTop: 0 }}>Nouvel Utilisateur</h4>
-                <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', alignItems: 'end' }}>
-                    <input name="nom" placeholder="Nom" value={formData.nom} onChange={handleChange} required style={styles.input} />
-                    <input name="email" type="email" placeholder="Email" value={formData.email} onChange={handleChange} required style={styles.input} />
-                    <input name="password" type="password" placeholder="Mot de passe" value={formData.password} onChange={handleChange} required style={styles.input} />
-                    <select name="role" value={formData.role} onChange={handleChange} style={styles.input}>
+            <div className="bg-gray-50 p-4 rounded-lg border mb-6">
+                <h4 className="mb-3 font-semibold">Nouvel Utilisateur</h4>
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <input name="nom" placeholder="Nom" value={formData.nom} onChange={handleChange} required className="px-3 py-2 border rounded" />
+                    <input name="email" type="email" placeholder="Email" value={formData.email} onChange={handleChange} required className="px-3 py-2 border rounded" />
+                    <input name="password" type="password" placeholder="Mot de passe" value={formData.password} onChange={handleChange} required className="px-3 py-2 border rounded" />
+                    <select name="role" value={formData.role} onChange={handleChange} className="px-3 py-2 border rounded">
                         <option value="ADMIN">ADMIN</option>
                         <option value="GESTIONNAIRE">GESTIONNAIRE</option>
                         <option value="ENSEIGNANT">ENSEIGNANT</option>
                         <option value="ETUDIANT">ETUDIANT</option>
+                        <option value="PRESIDENT_JURY">PRÉSIDENT DU JURY</option>
+                        <option value="MEMBRE_JURY">MEMBRE DU JURY</option>
+                        <option value="COMMISSION">COMMISSION DE VALIDATION</option>
+                        <option value="PARTENAIRE">PARTENAIRE</option>
+                        <option value="BIBLIOTHECAIRE">BIBLIOTHÉCAIRE</option>
                     </select>
-                    <button type="submit" disabled={loading} style={{ gridColumn: '1 / -1', padding: '10px', background: colors.success, color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    <button type="submit" disabled={loading} className="md:col-span-4 px-4 py-2 bg-green-600 text-white rounded font-bold">
                         {loading ? 'Création...' : 'Créer'}
                     </button>
                 </form>
             </div>
 
-            {/* Liste */}
-            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="bg-white rounded-lg border overflow-hidden">
+                <table className="min-w-full">
                     <thead>
-                        <tr style={{ background: '#F8FAFC', textAlign: 'left' }}>
-                            <th style={{ padding: '12px' }}>Nom</th>
-                            <th style={{ padding: '12px' }}>Email</th>
-                            <th style={{ padding: '12px' }}>Rôle</th>
+                        <tr className="bg-gray-50 text-left">
+                            <th className="px-4 py-3">Nom</th>
+                            <th className="px-4 py-3">Email</th>
+                            <th className="px-4 py-3">Rôle</th>
                         </tr>
                     </thead>
                     <tbody>
                         {users.length === 0 ? (
-                            <tr><td colSpan="3" style={{ padding: '20px', textAlign: 'center', color: '#888' }}>Aucun utilisateur ou erreur de chargement.</td></tr>
+                            <tr><td colSpan="3" className="p-6 text-center text-gray-500">Aucun utilisateur ou erreur de chargement.</td></tr>
                         ) : (
                             users.map((u) => (
-                                <tr key={u.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                                    <td style={{ padding: '12px' }}>{u.nom}</td>
-                                    <td style={{ padding: '12px' }}>{u.email}</td>
-                                    <td style={{ padding: '12px' }}>{u.role}</td>
+                                <tr key={u.id} className="border-b">
+                                    <td className="px-4 py-3">{u.nom}</td>
+                                    <td className="px-4 py-3">{u.email}</td>
+                                    <td className="px-4 py-3">{u.role}</td>
                                 </tr>
                             ))
                         )}

@@ -6,10 +6,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // 1. Inscription (Hachage)
+// Dans authController.js
+
 const registerUser = async (req, res) => {
     const { nom, prenom, email, password, role } = req.body;
 
-    // On attend exactement 5 champs : nom, prenom, email, password, role
     if (!nom || !prenom || !email || !password || !role) {
         return res.status(400).json({ message: "Données incomplètes" });
     }
@@ -21,12 +22,39 @@ const registerUser = async (req, res) => {
             return res.status(409).json({ message: "Cet email existe déjà" });
         }
 
-        // Hacher le mot de passe (10 rounds de sécurité)
+        // Hacher le mot de passe
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Insérer (Ordre : nom, prenom, email, password, role)
-        const query = 'INSERT INTO utilisateurs (nom, prenom, email, password, role) VALUES (?, ?, ?, ?, ?)';
-        await db.query(query, [nom, prenom, email, hashedPassword, role]);
+        // --- ÉTAPE CLÉ : CONVERTIR LE NOM DU RÔLE EN ID ---
+        let roleId = role;
+
+        // Si ce qu'on reçoit n'est pas un nombre (ex: "IMPETRANT" ou "ADMIN"), on cherche l'ID correspondant
+        if (isNaN(role)) {
+            console.log(`>>> Recherche de l'ID pour le rôle : ${role}`);
+            
+            // On cherche dans la table 'roles' si le code ou le nom correspond
+            const [roleRows] = await db.query(
+                'SELECT id_role FROM roles WHERE code_role = ? OR nom_role = ?', 
+                [role, role]
+            );
+
+            if (roleRows.length === 0) {
+                return res.status(400).json({ message: `Le rôle "${role}" n'existe pas dans la base de données.` });
+            }
+
+            roleId = roleRows[0].id_role;
+            console.log(`>>> Rôle trouvé : ID = ${roleId}`);
+        }
+        // ----------------------------------------------------
+
+        // Insérer avec le bon ID numérique
+        const query = `
+            INSERT INTO utilisateurs 
+            (nom, prenom, email, password, id_role, date_creation, est_actif) 
+            VALUES (?, ?, ?, ?, ?, NOW(), 1)
+        `;
+        
+        await db.query(query, [nom, prenom, email, hashedPassword, roleId]);
 
         console.log(">>> COMPTE CRÉÉ AVEC SUCCÈS");
         res.status(201).json({ message: "Utilisateur créé avec succès !" });
@@ -37,7 +65,7 @@ const registerUser = async (req, res) => {
     }
 };
 
-// 2. Connexion
+// 2. Connexion avec récupération rôle et permissions
 const login = async (req, res) => {
     const { email, password } = req.body;
 
@@ -46,7 +74,14 @@ const login = async (req, res) => {
     }
 
     try {
-        const query = 'SELECT * FROM utilisateurs WHERE email = ?';
+        // Récupérer l'utilisateur avec son rôle
+        const query = `
+            SELECT u.id, u.nom, u.prenom, u.email, u.password, u.id_role, 
+                   r.code_role, r.nom_role, u.est_actif
+            FROM utilisateurs u
+            JOIN roles r ON u.id_role = r.id_role
+            WHERE u.email = ? AND u.est_actif = TRUE
+        `;
         const [rows] = await db.query(query, [email]);
 
         if (rows.length === 0) {
@@ -62,42 +97,112 @@ const login = async (req, res) => {
             return res.status(401).json({ message: "Email ou mot de passe incorrect" });
         }
 
-        // Génération Token
+        // Récupérer les permissions du rôle
+        const [permissions] = await db.query(`
+            SELECT p.code_permission, p.nom_permission, p.package_id
+            FROM role_permissions rp
+            JOIN permissions p ON rp.id_permission = p.id_permission
+            WHERE rp.id_role = ? AND rp.est_autorise = TRUE
+            ORDER BY p.package_id, p.code_permission
+        `, [user.id_role]);
+
+        // Génération Token JWT
         const token = jwt.sign(
-            { id: user.id, email: user.email, role: user.role, nom: user.nom },
+            { 
+                id: user.id, 
+                email: user.email, 
+                codeRole: user.code_role, 
+                nomRole: user.nom_role,
+                nom: user.nom,
+                idRole: user.id_role
+            },
             process.env.JWT_SECRET || 'secret_key',
             { expiresIn: '24h' }
         );
 
-        console.log(">>> CONNEXION RÉUSSIE POUR :", email);
+        console.log(">>> CONNEXION RÉUSSIE POUR :", email, `(${user.code_role})`);
 
         res.json({
             message: "Connexion réussie !",
             token: token,
-            user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role }
+            user: { 
+                id: user.id, 
+                nom: user.nom, 
+                prenom: user.prenom, 
+                email: user.email, 
+                idRole: user.id_role,
+                codeRole: user.code_role,
+                nomRole: user.nom_role
+            },
+            permissions: permissions.map(p => ({
+                code: p.code_permission,
+                nom: p.nom_permission,
+                package: p.package_id
+            }))
         });
 
     } catch (error) {
         console.error(">>> ERREUR LOGIN :", error);
+        
+        // Gestion spécifique des erreurs de connexion
+        if (error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
+            return res.status(503).json({ 
+                message: "Base de données indisponible. Vérifiez que MySQL est en cours d'exécution.",
+                error: error.code 
+            });
+        }
+        
         res.status(500).json({ message: "Erreur serveur." });
     }
 };
 
-// 3. Obtenir le profil de l'utilisateur connecté (UC-GCU-03)
+// 3. Obtenir le profil de l'utilisateur connecté avec rôle et permissions (UC-GCU-03)
 const getProfile = async (req, res) => {
     const userId = req.user.id;
 
     try {
-        const [rows] = await db.query(
-            'SELECT id, nom, prenom, email, role, date_creation FROM utilisateurs WHERE id = ?',
+        // Récupérer l'utilisateur avec son rôle
+        const [userRows] = await db.query(
+            `SELECT u.id, u.nom, u.prenom, u.email, u.date_creation, 
+                    r.id_role, r.code_role, r.nom_role
+             FROM utilisateurs u
+             JOIN roles r ON u.id_role = r.id_role
+             WHERE u.id = ? AND u.est_actif = TRUE`,
             [userId]
         );
 
-        if (rows.length === 0) {
-            return res.status(404).json({ message: "Utilisateur non trouvé" });
+        if (userRows.length === 0) {
+            return res.status(404).json({ message: "Utilisateur non trouvé ou inactif" });
         }
 
-        res.json(rows[0]);
+        const user = userRows[0];
+
+        // Récupérer les permissions du rôle
+        const [permissions] = await db.query(`
+            SELECT p.code_permission, p.nom_permission, p.package_id
+            FROM role_permissions rp
+            JOIN permissions p ON rp.id_permission = p.id_permission
+            WHERE rp.id_role = ? AND rp.est_autorise = TRUE
+            ORDER BY p.package_id, p.code_permission
+        `, [user.id_role]);
+
+        res.json({
+            id: user.id,
+            nom: user.nom,
+            prenom: user.prenom,
+            email: user.email,
+            date_creation: user.date_creation,
+            role: {
+                id: user.id_role,
+                code: user.code_role,
+                nom: user.nom_role
+            },
+            permissions: permissions.map(p => ({
+                code: p.code_permission,
+                nom: p.nom_permission,
+                package: p.package_id
+            }))
+        });
     } catch (error) {
         console.error("ERREUR getProfile :", error);
         res.status(500).json({ message: "Erreur serveur" });

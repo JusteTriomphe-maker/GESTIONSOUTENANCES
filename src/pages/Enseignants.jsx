@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiCall } from '../config/api.js';
 
 const Enseignants = () => {
     const [formData, setFormData] = useState({ matricule: '', nom: '', prenom: '', email: '', grade: 'MCF', specialite: '', capacite: 5 });
@@ -19,14 +20,9 @@ const Enseignants = () => {
         warning: '#F59E0B'
     };
 
-    const getAuthHeaders = () => ({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-    });
-
     const fetchEnseignants = async () => {
         try {
-            const res = await fetch('/api/enseignants', { headers: getAuthHeaders() });
+            const res = await apiCall('/api/enseignants');
             const data = await res.json();
             setEnseignants(data);
         } catch (error) {
@@ -48,9 +44,8 @@ const Enseignants = () => {
         e.preventDefault();
         setMessage({ text: "Chargement...", type: 'info' });
         try {
-            const res = await fetch('/api/enseignants/add', {
+            const res = await apiCall('/api/enseignants/add', {
                 method: 'POST',
-                headers: getAuthHeaders(),
                 body: JSON.stringify(formData)
             });
             const data = await res.json();
@@ -76,9 +71,8 @@ const Enseignants = () => {
         e.preventDefault();
         setMessage({ text: 'Modification en cours...', type: 'info' });
         try {
-            const res = await fetch(`/api/enseignants/update/${editData.id_enseignant}`, {
+            const res = await apiCall(`/api/enseignants/update/${editData.id_enseignant}`, {
                 method: 'PUT',
-                headers: getAuthHeaders(),
                 body: JSON.stringify(editData)
             });
             const data = await res.json();
@@ -100,10 +94,7 @@ const Enseignants = () => {
         if (!window.confirm("Êtes-vous sûr de vouloir supprimer cet enseignant ? Cette action est irréversible.")) return;
         
         try {
-            const res = await fetch(`/api/enseignants/delete/${id}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders()
-            });
+            const res = await apiCall(`/api/enseignants/delete/${id}`, { method: 'DELETE' });
             const data = await res.json();
             
             if (res.ok) {
@@ -121,10 +112,7 @@ const Enseignants = () => {
         if (!window.confirm("Êtes-vous sûr de vouloir désactiver cet enseignant ?")) return;
         
         try {
-            const res = await fetch(`/api/enseignants/desactivate/${id}`, {
-                method: 'PUT',
-                headers: getAuthHeaders()
-            });
+            const res = await apiCall(`/api/enseignants/desactivate/${id}`, { method: 'PUT' });
             const data = await res.json();
             
             if (res.ok) {
@@ -140,10 +128,7 @@ const Enseignants = () => {
 
     const handleActivate = async (id) => {
         try {
-            const res = await fetch(`/api/enseignants/activate/${id}`, {
-                method: 'PUT',
-                headers: getAuthHeaders()
-            });
+            const res = await apiCall(`/api/enseignants/activate/${id}`, { method: 'PUT' });
             const data = await res.json();
             
             if (res.ok) {
@@ -199,192 +184,136 @@ const Enseignants = () => {
         );
     };
 
-    const styles = {
-        card: { backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)', marginBottom: '30px' },
-        input: { padding: '12px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', width: '100%', boxSizing: 'border-box' },
-        button: { padding: '12px 25px', backgroundColor: colors.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', transition: '0.3s' },
-        th: { padding: '15px', textAlign: 'left', borderBottom: '2px solid #F1F5F9', color: colors.secondary, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' },
-        td: { padding: '15px', borderBottom: '1px solid #F1F5F9', fontSize: '14px', color: '#334155' },
-        searchInput: { padding: '12px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', width: '300px' },
-        actionBtn: { padding: '8px 12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', marginRight: '5px' }
-    };
+    const cardClass = 'bg-white rounded-lg p-6 shadow mb-6';
+    const inputClass = 'w-full px-3 py-2 border rounded-md';
+    const buttonClass = 'px-3 py-2 rounded-md font-semibold';
+    const tableHeadClass = 'text-xs text-gray-500 uppercase';
+    const tdClass = 'px-4 py-3 text-sm text-gray-700';
 
     return (
-        <div style={{ animation: 'fadeIn 0.5s ease' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-                <h2 style={{ margin: 0, color: colors.primary }}>👨‍🏫 Gestion des Enseignants</h2>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <button 
-                        onClick={() => setShowDesactivated(!showDesactivated)}
-                        style={{ 
-                            ...styles.actionBtn, 
-                            backgroundColor: showDesactivated ? colors.danger : '#F1F5F9',
-                            color: showDesactivated ? 'white' : colors.secondary
-                        }}
-                    >
+        <div className="p-8">
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-primary">👨‍🏫 Gestion des Enseignants</h2>
+                <div className="flex items-center gap-3">
+                    <button onClick={() => setShowDesactivated(!showDesactivated)} className={`${buttonClass} ${showDesactivated ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700'}`}>
                         {showDesactivated ? '👁️ Voir Actifs' : '🚫 Voir Désactivés'}
                     </button>
-                    <span style={{ fontSize: '14px', color: colors.secondary }}>{filteredEnseignants.length} enregistrés</span>
+                    <span className="text-sm text-gray-500">{filteredEnseignants.length} enregistrés</span>
                 </div>
             </div>
 
-            {/* RECHERCHE */}
-            <div style={{ marginBottom: '20px' }}>
-                <input 
-                    type="text" 
-                    placeholder="🔍 Rechercher par matricule, nom, prénom, spécialité ou grade..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    style={styles.searchInput}
-                />
+            <div className="mb-4">
+                <input type="text" placeholder="🔍 Rechercher par matricule, nom, prénom, spécialité ou grade..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full md:w-80 px-3 py-2 border rounded-md" />
             </div>
 
-            {/* MESSAGE */}
             {message.text && (
-                <div style={{ 
-                    padding: '15px', borderRadius: '8px', marginBottom: '20px',
-                    backgroundColor: message.type === 'success' ? '#DCFCE7' : message.type === 'danger' ? '#FEE2E2' : '#FEF3C7',
-                    color: message.type === 'success' ? '#166534' : message.type === 'danger' ? '#991B1B' : '#92400E'
-                }}>
+                <div className={`${message.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : message.type === 'danger' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-yellow-50 border-yellow-200 text-yellow-700'} border rounded-md p-3 mb-4`}>
                     {message.text}
                 </div>
             )}
 
-            {/* FORMULAIRE D'AJOUT */}
             {!showDesactivated && (
-                <div style={styles.card}>
-                    <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '16px', color: colors.primary }}>➕ Nouvel Enseignant</h3>
+                <div className={cardClass}>
+                    <h3 className="text-base font-semibold mb-4 text-primary">➕ Nouvel Enseignant</h3>
                     <form onSubmit={handleSubmit}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-                            <input name="matricule" placeholder="Matricule *" onChange={handleChange} value={formData.matricule} required style={styles.input} />
-                            <input name="email" type="email" placeholder="Email professionnel *" onChange={handleChange} value={formData.email} required style={styles.input} />
-                            <input name="nom" placeholder="Nom *" onChange={handleChange} value={formData.nom} required style={styles.input} />
-                            <input name="prenom" placeholder="Prénom *" onChange={handleChange} value={formData.prenom} required style={styles.input} />
-                            
-                            <select name="grade" onChange={handleChange} value={formData.grade} style={styles.input}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input name="matricule" placeholder="Matricule *" onChange={handleChange} value={formData.matricule} required className={inputClass} />
+                            <input name="email" type="email" placeholder="Email professionnel *" onChange={handleChange} value={formData.email} required className={inputClass} />
+                            <input name="nom" placeholder="Nom *" onChange={handleChange} value={formData.nom} required className={inputClass} />
+                            <input name="prenom" placeholder="Prénom *" onChange={handleChange} value={formData.prenom} required className={inputClass} />
+                            <select name="grade" onChange={handleChange} value={formData.grade} className={inputClass}>
                                 <option value="Professeur">Professeur</option>
                                 <option value="MCF">Maître de Conférences</option>
                                 <option value="Assistant">Assistant</option>
                             </select>
-
-                            <select name="capacite" onChange={handleChange} value={formData.capacite} style={styles.input}>
+                            <select name="capacite" onChange={handleChange} value={formData.capacite} className={inputClass}>
                                 <option value="3">Quota : 3 étudiants</option>
                                 <option value="5">Quota : 5 étudiants</option>
                                 <option value="10">Quota : 10 étudiants</option>
                             </select>
-                            
-                            <input name="specialite" placeholder="Spécialité (ex: Intelligence Artificielle)" onChange={handleChange} value={formData.specialite} style={styles.input} />
+                            <input name="specialite" placeholder="Spécialité (ex: Intelligence Artificielle)" onChange={handleChange} value={formData.specialite} className={inputClass} />
                         </div>
-                        
-                        <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                            <button type="submit" style={styles.button}>Enregistrer l'enseignant</button>
+
+                        <div className="mt-4">
+                            <button type="submit" className={`bg-primary text-white ${buttonClass}`}>Enregistrer l'enseignant</button>
                         </div>
                     </form>
                 </div>
             )}
 
-            {/* TABLEAU DES ENSEIGNANTS */}
-            <div style={{ ...styles.card, padding: '10px' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="bg-white rounded-lg p-4 shadow">
+                <table className="w-full table-auto border-collapse">
                     <thead>
-                        <tr>
-                            <th style={styles.th}>Matricule</th>
-                            <th style={styles.th}>Nom & Prénom</th>
-                            <th style={styles.th}>Grade</th>
-                            <th style={styles.th}>Spécialité</th>
-                            <th style={styles.th}>Capacité</th>
-                            <th style={styles.th}>Statut</th>
-                            <th style={styles.th}>Actions</th>
+                        <tr className={tableHeadClass}>
+                            <th className="px-4 py-3">Matricule</th>
+                            <th className="px-4 py-3">Nom & Prénom</th>
+                            <th className="px-4 py-3">Grade</th>
+                            <th className="px-4 py-3">Spécialité</th>
+                            <th className="px-4 py-3">Capacité</th>
+                            <th className="px-4 py-3">Statut</th>
+                            <th className="px-4 py-3">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredEnseignants.length > 0 ? filteredEnseignants.map((ens) => (
-                            <tr key={ens.id_enseignant} style={{ transition: '0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#F8FAFC'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                                <td style={styles.td}><strong>{ens.matricule}</strong></td>
-                                <td style={styles.td}>
-                                    <div style={{ fontWeight: '600' }}>{ens.nom} {ens.prenom}</div>
-                                    <div style={{ fontSize: '12px', color: colors.secondary }}>{ens.email}</div>
+                            <tr key={ens.id_enseignant} className="hover:bg-gray-50 transition">
+                                <td className={tdClass}><strong>{ens.matricule}</strong></td>
+                                <td className={tdClass}>
+                                    <div className="font-semibold">{ens.nom} {ens.prenom}</div>
+                                    <div className="text-sm text-gray-500">{ens.email}</div>
                                 </td>
-                                <td style={styles.td}>{getGradeBadge(ens.grade)}</td>
-                                <td style={styles.td}>{ens.specialite || '—'}</td>
-                                <td style={styles.td}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                        <div style={{ width: '40px', height: '8px', backgroundColor: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
-                                            <div style={{ width: '0%', height: '100%', backgroundColor: colors.success }}></div>
-                                        </div>
-                                        <span style={{ fontSize: '12px', fontWeight: 'bold' }}>0/{ens.capacite_encadrement}</span>
+                                <td className={tdClass}>{getGradeBadge(ens.grade)}</td>
+                                <td className={tdClass}>{ens.specialite || '—'}</td>
+                                <td className={tdClass}>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-10 h-2 bg-gray-100 rounded overflow-hidden"><div style={{ width: '0%' }} className="h-full bg-green-400"></div></div>
+                                        <span className="text-sm font-bold">0/{ens.capacite_encadrement}</span>
                                     </div>
                                 </td>
-                                <td style={styles.td}>{getStatutBadge(ens.statut_enseignant)}</td>
-                                <td style={styles.td}>
+                                <td className={tdClass}>{getStatutBadge(ens.statut_enseignant)}</td>
+                                <td className={tdClass}>
                                     {ens.statut_enseignant !== 'Inactif' ? (
                                         <>
-                                            <button 
-                                                onClick={() => handleEdit(ens)}
-                                                style={{ ...styles.actionBtn, backgroundColor: '#DBEAFE', color: '#1D4ED8' }}
-                                            >
-                                                ✏️ Modifier
-                                            </button>
-                                            <button 
-                                                onClick={() => handleDesactivate(ens.id_enseignant)}
-                                                style={{ ...styles.actionBtn, backgroundColor: '#FEF3C7', color: '#B45309' }}
-                                            >
-                                                🚫 Désactiver
-                                            </button>
-                                            <button 
-                                                onClick={() => handleDelete(ens.id_enseignant)}
-                                                style={{ ...styles.actionBtn, backgroundColor: '#FEE2E2', color: '#991B1B' }}
-                                            >
-                                                🗑️ Supprimer
-                                            </button>
+                                            <button onClick={() => handleEdit(ens)} className="px-2 py-1 rounded bg-blue-50 text-blue-700 mr-2">✏️ Modifier</button>
+                                            <button onClick={() => handleDesactivate(ens.id_enseignant)} className="px-2 py-1 rounded bg-yellow-50 text-yellow-700 mr-2">🚫 Désactiver</button>
+                                            <button onClick={() => handleDelete(ens.id_enseignant)} className="px-2 py-1 rounded bg-red-50 text-red-700">🗑️ Supprimer</button>
                                         </>
                                     ) : (
-                                        <button 
-                                            onClick={() => handleActivate(ens.id_enseignant)}
-                                            style={{ ...styles.actionBtn, backgroundColor: '#DCFCE7', color: '#166534' }}
-                                        >
-                                            ✅ Réactiver
-                                        </button>
+                                        <button onClick={() => handleActivate(ens.id_enseignant)} className="px-2 py-1 rounded bg-green-50 text-green-700">✅ Réactiver</button>
                                     )}
                                 </td>
                             </tr>
                         )) : (
                             <tr>
-                                <td colSpan="7" style={{ ...styles.td, textAlign: 'center', padding: '40px', color: colors.secondary }}>
-                                    {showDesactivated ? 'Aucun enseignant désactivé.' : 'Aucun enseignant trouvé.'}
-                                </td>
+                                <td colSpan="7" className="text-center p-10 text-gray-500">{showDesactivated ? 'Aucun enseignant désactivé.' : 'Aucun enseignant trouvé.'}</td>
                             </tr>
                         )}
                     </tbody>
                 </table>
             </div>
 
-            {/* MODAL DE MODIFICATION */}
+            {/* MODAL */}
             {showModal && editData && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 1000
-                }}>
-                    <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', width: '500px', maxWidth: '90%' }}>
-                        <h3 style={{ marginTop: 0, color: colors.primary }}>Modifier l'Enseignant</h3>
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg w-full max-w-lg">
+                        <h3 className="text-lg font-semibold text-primary">Modifier l'Enseignant</h3>
                         <form onSubmit={handleUpdate}>
-                            <div style={{ display: 'grid', gap: '15px' }}>
-                                <input name="matricule" value={editData.matricule} onChange={handleEditChange} style={styles.input} placeholder="Matricule" />
-                                <input name="nom" value={editData.nom} onChange={handleEditChange} style={styles.input} placeholder="Nom" />
-                                <input name="prenom" value={editData.prenom} onChange={handleEditChange} style={styles.input} placeholder="Prénom" />
-                                <input name="email" value={editData.email} onChange={handleEditChange} style={styles.input} placeholder="Email" />
-                                <select name="grade" value={editData.grade} onChange={handleEditChange} style={styles.input}>
+                            <div className="grid gap-3 mt-3">
+                                <input name="matricule" value={editData.matricule} onChange={handleEditChange} className={inputClass} placeholder="Matricule" />
+                                <input name="nom" value={editData.nom} onChange={handleEditChange} className={inputClass} placeholder="Nom" />
+                                <input name="prenom" value={editData.prenom} onChange={handleEditChange} className={inputClass} placeholder="Prénom" />
+                                <input name="email" value={editData.email} onChange={handleEditChange} className={inputClass} placeholder="Email" />
+                                <select name="grade" value={editData.grade} onChange={handleEditChange} className={inputClass}>
                                     <option value="Professeur">Professeur</option>
                                     <option value="MCF">Maître de Conférences</option>
                                     <option value="Assistant">Assistant</option>
                                 </select>
-                                <input name="specialite" value={editData.specialite || ''} onChange={handleEditChange} style={styles.input} placeholder="Spécialité" />
-                                <input name="capacite_encadrement" type="number" value={editData.capacite_encadrement} onChange={handleEditChange} style={styles.input} placeholder="Capacité d'encadrement" />
+                                <input name="specialite" value={editData.specialite || ''} onChange={handleEditChange} className={inputClass} placeholder="Spécialité" />
+                                <input name="capacite_encadrement" type="number" value={editData.capacite_encadrement} onChange={handleEditChange} className={inputClass} placeholder="Capacité d'encadrement" />
                             </div>
-                            <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                                <button type="button" onClick={() => { setShowModal(false); setEditData(null); }} style={{ ...styles.button, backgroundColor: colors.secondary }}>Annuler</button>
-                                <button type="submit" style={styles.button}>Enregistrer</button>
+                            <div className="mt-4 flex justify-end gap-2">
+                                <button type="button" onClick={() => { setShowModal(false); setEditData(null); }} className="px-3 py-2 rounded bg-gray-200">Annuler</button>
+                                <button type="submit" className="px-3 py-2 rounded bg-primary text-white">Enregistrer</button>
                             </div>
                         </form>
                     </div>

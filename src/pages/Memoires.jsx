@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiCall } from '../config/api.js';
 
 const Memoires = () => {
     const [formData, setFormData] = useState({ id_attribution: '' });
@@ -10,7 +11,7 @@ const Memoires = () => {
     // Charger les attributions
     const fetchAttributions = async () => {
         try {
-            const res = await fetch('/api/attributions');
+            const res = await apiCall('/api/attributions');
             const data = await res.json();
             setAttributions(data);
         } catch (error) { 
@@ -21,7 +22,7 @@ const Memoires = () => {
     // Charger les mémoires
     const fetchMemoires = async () => {
         try {
-            const res = await fetch('/api/memoires');
+            const res = await apiCall('/api/memoires');
             const data = await res.json();
             setMemoires(data);
         } catch (error) { 
@@ -55,11 +56,7 @@ const Memoires = () => {
         data.append('fichier', file);
 
         try {
-            const res = await fetch('/api/memoires/add', {
-                method: 'POST',
-                body: data
-            });
-
+            const res = await apiCall('/api/memoires/add', { method: 'POST', body: data });
             const result = await res.json();
 
             if (res.ok) {
@@ -68,7 +65,7 @@ const Memoires = () => {
                 setFormData({ id_attribution: '' });
                 fetchMemoires();
             } else {
-                setMessage("❌ Erreur : " + result.message);
+                setMessage("❌ Erreur : " + (result.message || 'Erreur'));
             }
         } catch (error) {
             setMessage("❌ Erreur serveur");
@@ -79,11 +76,11 @@ const Memoires = () => {
     const handleValidate = async (id) => {
         if (!window.confirm("Voulez-vous vraiment valider ce mémoire ?")) return;
         try {
-            const res = await fetch(`/api/memoires/validate/${id}`, { method: 'PUT' });
+            const res = await apiCall(`/api/memoires/validate/${id}`, { method: 'PUT' });
             if (res.ok) fetchMemoires();
             else alert("Erreur validation");
-        } catch (error) { 
-            alert("Erreur validation"); 
+        } catch (error) {
+            alert("Erreur validation");
         }
     };
 
@@ -91,31 +88,24 @@ const Memoires = () => {
     const handleReject = async (id) => {
         if (!window.confirm("Voulez-vous vraiment rejeter ce mémoire ? L'étudiant devra le redéposer.")) return;
         try {
-            const res = await fetch(`/api/memoires/reject/${id}`, { method: 'PUT' });
+            const res = await apiCall(`/api/memoires/reject/${id}`, { method: 'PUT' });
             if (res.ok) fetchMemoires();
             else alert("Erreur rejet");
-        } catch (error) { 
-            alert("Erreur rejet"); 
+        } catch (error) {
+            alert("Erreur rejet");
         }
     };
 
     return (
-        <div style={{ padding: '20px', maxWidth: '1100px', margin: '0 auto' }}>
-            <h2>Dépôt de Mémoires (PDF)</h2>
-            
-            {/* Formulaire */}
-            <div style={{ border: '1px solid #28a745', padding: '20px', borderRadius: '10px', marginBottom: '30px', backgroundColor: '#e8f5e9' }}>
-                <h3>Déposer un nouveau mémoire</h3>
+        <div className="p-8 max-w-5xl mx-auto">
+            <h2 className="text-xl font-semibold mb-4">Dépôt de Mémoires (PDF)</h2>
+
+            <div className="mb-6 border border-green-200 bg-green-50 rounded-lg p-6">
+                <h3 className="font-semibold mb-3">Déposer un nouveau mémoire</h3>
                 <form onSubmit={handleSubmit}>
-                    <div style={{ marginBottom: '15px' }}>
-                        <label>Sélectionner l'Étudiant (Attribution) :</label>
-                        <select 
-                            name="id_attribution" 
-                            onChange={handleChange} 
-                            value={formData.id_attribution} 
-                            required 
-                            style={{ marginLeft: '10px', padding: '8px' }}
-                        >
+                    <div className="mb-4">
+                        <label className="block mb-2">Sélectionner l'Étudiant (Attribution) :</label>
+                        <select name="id_attribution" onChange={handleChange} value={formData.id_attribution} required className="px-3 py-2 border rounded-md w-full md:w-1/2">
                             <option value="">-- Choisir --</option>
                             {attributions.map(attr => (
                                 <option key={attr.id_attribution} value={attr.id_attribution}>
@@ -125,101 +115,58 @@ const Memoires = () => {
                         </select>
                     </div>
 
-                    <div style={{ marginBottom: '15px' }}>
-                        <label>Fichier PDF (Max 100Mo) :</label>
-                        <input 
-                            type="file" 
-                            accept="application/pdf" 
-                            onChange={handleFileChange} 
-                            required 
-                            style={{ marginLeft: '10px' }}
-                        />
+                    <div className="mb-4">
+                        <label className="block mb-2">Fichier PDF (Max 100Mo) :</label>
+                        <input type="file" accept="application/pdf" onChange={handleFileChange} required className="w-full" />
                     </div>
 
-                    <button 
-                        type="submit" 
-                        style={{ padding: '10px 20px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
-                    >
-                        Déposer le Mémoire
-                    </button>
+                    <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-md">Déposer le Mémoire</button>
 
-                    {message && <p style={{ marginTop: '10px', fontWeight: 'bold' }}>{message}</p>}
+                    {message && <p className="mt-3 font-semibold">{message}</p>}
                 </form>
             </div>
 
-            {/* Liste */}
-            <h3>Liste des Mémoires ({memoires.length})</h3>
-            <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                
-                <thead style={{ backgroundColor: '#28a745', color: 'white' }}>
-                    <tr>
-                        <th>Étudiant</th>
-                        <th>Thème</th>
-                        <th>Statut</th>
-                        <th>Fichier</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
+            <h3 className="text-lg font-semibold mb-3">Liste des Mémoires ({memoires.length})</h3>
 
-                <tbody>
-                    {memoires.map((mem) => (
-                        <tr key={mem.id_memoire}>
-                            <td>{mem.nom_etudiant} {mem.prenom_etudiant}</td>
-                            <td>{mem.titre}</td>
-                            <td>
-                                <span style={{ 
-                                    padding: '5px 10px', 
-                                    borderRadius: '5px', 
-                                    backgroundColor: mem.statut_validation === 'Validé' 
-                                        ? '#28a745' 
-                                        : (mem.statut_validation === 'Rejeté' 
-                                            ? '#dc3545' 
-                                            : '#ffc107'),
-                                    color: mem.statut_validation === 'Validé' ? 'white' : 'black',
-                                    fontWeight: 'bold'
-                                }}>
-                                    {mem.statut_validation}
-                                </span>
-                            </td>
-                            <td>
-                                <a 
-                                    href={`/uploads/${mem.nom_fichier}`} 
-                                    target="_blank" 
-                                    rel="noreferrer" 
-                                    style={{ color: '#007bff' }}
-                                >
-                                    📄 Télécharger
-                                </a>
-                            </td>
-                            <td>
-                                {mem.statut_validation === 'En attente' && (
-                                    <div style={{ display: 'flex', gap: '5px' }}>
-                                        <button 
-                                            onClick={() => handleValidate(mem.id_memoire)} 
-                                            style={{ padding: '5px 10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
-                                        >
-                                            ✓ Valider
-                                        </button>
-                                        <button 
-                                            onClick={() => handleReject(mem.id_memoire)} 
-                                            style={{ padding: '5px 10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
-                                        >
-                                            ✗ Rejeter
-                                        </button>
-                                    </div>
-                                )}
-
-                                {mem.statut_validation !== 'En attente' && (
-                                    <span style={{ color: '#aaa', fontStyle: 'italic' }}>
-                                        Terminé
-                                    </span>
-                                )}
-                            </td>
+            <div className="overflow-x-auto bg-white rounded-lg shadow">
+                <table className="min-w-full divide-y">
+                    <thead className="bg-green-600 text-white">
+                        <tr>
+                            <th className="px-4 py-3 text-left">Étudiant</th>
+                            <th className="px-4 py-3 text-left">Thème</th>
+                            <th className="px-4 py-3 text-left">Statut</th>
+                            <th className="px-4 py-3 text-left">Fichier</th>
+                            <th className="px-4 py-3 text-left">Action</th>
                         </tr>
-                    ))}
-                </tbody>
-
-            </table>
+                    </thead>
+                    <tbody className="divide-y">
+                        {memoires.map((mem) => (
+                            <tr key={mem.id_memoire} className="hover:bg-gray-50">
+                                <td className="px-4 py-3">{mem.nom_etudiant} {mem.prenom_etudiant}</td>
+                                <td className="px-4 py-3">{mem.titre}</td>
+                                <td className="px-4 py-3">
+                                    <span className={`px-2 py-1 rounded font-bold ${mem.statut_validation === 'Validé' ? 'bg-green-600 text-white' : mem.statut_validation === 'Rejeté' ? 'bg-red-600 text-white' : 'bg-yellow-300 text-black'}`}>
+                                        {mem.statut_validation}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <a href={`/uploads/${mem.nom_fichier}`} target="_blank" rel="noreferrer" className="text-blue-600">📄 Télécharger</a>
+                                </td>
+                                <td className="px-4 py-3">
+                                    {mem.statut_validation === 'En attente' ? (
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handleValidate(mem.id_memoire)} className="px-3 py-1 bg-green-600 text-white rounded">✓ Valider</button>
+                                            <button onClick={() => handleReject(mem.id_memoire)} className="px-3 py-1 bg-red-600 text-white rounded">✗ Rejeter</button>
+                                        </div>
+                                    ) : (
+                                        <span className="text-gray-400 italic">Terminé</span>
+                                    )}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 };

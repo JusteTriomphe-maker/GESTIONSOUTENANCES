@@ -21,7 +21,7 @@ const createUser = async (req, res) => {
         // Hacher le mot de passe (10 rounds de sécurité)
         const hashedPassword = await bcrypt.hash(password, 10);
         
-        const query = 'INSERT INTO utilisateurs (nom, email, password, role) VALUES (?, ?, ?, ?)';
+        const query = 'INSERT INTO utilisateurs (nom, prenom, email, password, id_role, date_creation, est_actif) VALUES (?, ?, ?, ?, ?, NOW(), 1)';
         await db.query(query, [nom, email, hashedPassword, role]);
         res.status(201).json({ message: "Utilisateur créé" });
     } catch (error) {

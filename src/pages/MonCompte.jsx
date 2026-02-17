@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiCall } from '../config/api.js';
 
 const MonCompte = ({ user, onLogout }) => {
     const [profileData, setProfileData] = useState(null);
@@ -8,317 +9,138 @@ const MonCompte = ({ user, onLogout }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [showPasswordForm, setShowPasswordForm] = useState(false);
 
-    const colors = {
-        primary: '#234666',
-        secondary: '#64748B',
-        success: '#10B981',
-        danger: '#D34053',
-        warning: '#F59E0B',
-        info: '#3C50E0'
-    };
-
-    const getAuthHeaders = () => ({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-    });
-
     const fetchProfile = async () => {
         try {
-            const res = await fetch('/api/auth/profile', { headers: getAuthHeaders() });
+            const res = await apiCall('/api/auth/profile');
             if (res.ok) {
                 const data = await res.json();
                 setProfileData(data);
                 setFormData({ nom: data.nom || '', prenom: data.prenom || '', email: data.email || '' });
             }
-        } catch (error) {
-            console.error("Erreur lors de la récupération du profil:", error);
-        }
+        } catch (error) { console.error('Erreur lors de la récupération du profil:', error); }
     };
 
-    useEffect(() => {
-        fetchProfile();
-    }, []);
+    useEffect(() => { fetchProfile(); }, []);
 
     const handleProfileUpdate = async (e) => {
         e.preventDefault();
         setMessage({ text: 'Mise à jour en cours...', type: 'info' });
-        
         try {
-            const res = await fetch('/api/auth/profile', {
-                method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify(formData)
-            });
-
+            const res = await apiCall('/api/auth/profile', { method: 'PUT', body: JSON.stringify(formData) });
             const data = await res.json();
-            if (res.ok) {
-                setMessage({ text: "✅ Profil mis à jour avec succès !", type: 'success' });
-                setIsEditing(false);
-                fetchProfile();
-            } else {
-                setMessage({ text: "❌ Erreur : " + data.message, type: 'danger' });
-            }
-        } catch (error) {
-            setMessage({ text: "❌ Erreur serveur", type: 'danger' });
-        }
+            if (res.ok) { setMessage({ text: '✅ Profil mis à jour avec succès !', type: 'success' }); setIsEditing(false); fetchProfile(); }
+            else setMessage({ text: '❌ Erreur : ' + (data.message || 'Erreur'), type: 'danger' });
+        } catch (error) { setMessage({ text: '❌ Erreur serveur', type: 'danger' }); }
     };
 
     const handlePasswordChange = async (e) => {
         e.preventDefault();
-        
-        if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-            setMessage({ text: "❌ Veuillez remplir tous les champs", type: 'danger' });
-            return;
-        }
-
-        if (passwordData.newPassword !== passwordData.confirmPassword) {
-            setMessage({ text: "❌ Les mots de passe ne correspondent pas", type: 'danger' });
-            return;
-        }
-
-        if (passwordData.newPassword.length < 6) {
-            setMessage({ text: "❌ Le mot de passe doit contenir au moins 6 caractères", type: 'danger' });
-            return;
-        }
-
+        if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) { setMessage({ text: '❌ Veuillez remplir tous les champs', type: 'danger' }); return; }
+        if (passwordData.newPassword !== passwordData.confirmPassword) { setMessage({ text: '❌ Les mots de passe ne correspondent pas', type: 'danger' }); return; }
+        if (passwordData.newPassword.length < 6) { setMessage({ text: '❌ Le mot de passe doit contenir au moins 6 caractères', type: 'danger' }); return; }
         setMessage({ text: 'Modification en cours...', type: 'info' });
-        
         try {
-            const res = await fetch('/api/auth/change-password', {
-                method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ 
-                    currentPassword: passwordData.currentPassword, 
-                    newPassword: passwordData.newPassword 
-                })
-            });
-
+            const res = await apiCall('/api/auth/change-password', { method: 'PUT', body: JSON.stringify({ currentPassword: passwordData.currentPassword, newPassword: passwordData.newPassword }) });
             const data = await res.json();
-            if (res.ok) {
-                setMessage({ text: "✅ Mot de passe modifié avec succès !", type: 'success' });
-                setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-                setShowPasswordForm(false);
-            } else {
-                setMessage({ text: "❌ Erreur : " + data.message, type: 'danger' });
-            }
-        } catch (error) {
-            setMessage({ text: "❌ Erreur serveur", type: 'danger' });
-        }
+            if (res.ok) { setMessage({ text: '✅ Mot de passe modifié avec succès !', type: 'success' }); setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' }); setShowPasswordForm(false); }
+            else setMessage({ text: '❌ Erreur : ' + (data.message || 'Erreur'), type: 'danger' });
+        } catch (error) { setMessage({ text: '❌ Erreur serveur', type: 'danger' }); }
     };
 
-    const getRoleBadge = (role) => {
-        const roles = {
-            'ADMIN': { bg: '#FEE2E2', color: '#991B1B' },
-            'GESTIONNAIRE': { bg: '#DBEAFE', color: '#1D4ED8' },
-            'COORDONNATEUR': { bg: '#FEF3C7', color: '#92400E' },
-            'ENSEIGNANT': { bg: '#DCFCE7', color: '#166534' },
-            'ETUDIANT': { bg: '#E0E7FF', color: '#4338CA' }
-        };
-        const r = roles[role] || { bg: '#F3F4F6', color: '#374151' };
-        return (
-            <span style={{ 
-                padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '700',
-                backgroundColor: r.bg, color: r.color 
-            }}>
-                {role}
-            </span>
-        );
+    const roleBadge = (role) => {
+        const map = { ADMIN: 'bg-red-100 text-red-700', GESTIONNAIRE: 'bg-blue-100 text-blue-700', COORDONNATEUR: 'bg-yellow-100 text-yellow-700', ENSEIGNANT: 'bg-green-100 text-green-700', ETUDIANT: 'bg-indigo-100 text-indigo-700' };
+        return <span className={`px-3 py-1 rounded-full text-sm font-semibold ${map[role] || 'bg-gray-100 text-gray-700'}`}>{role}</span>;
     };
 
-    const styles = {
-        card: { backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)', marginBottom: '30px' },
-        input: { padding: '12px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', width: '100%', boxSizing: 'border-box' },
-        button: { padding: '12px 25px', backgroundColor: colors.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' },
-        label: { display: 'block', fontSize: '12px', color: colors.secondary, fontWeight: 'bold', marginBottom: '8px' }
-    };
+    const inputClass = 'w-full px-3 py-2 border rounded-md';
+    const cardClass = 'bg-white rounded-lg shadow p-6 mb-6';
 
     return (
-        <div style={{ maxWidth: '800px', margin: '0 auto', animation: 'fadeIn 0.5s ease' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-                <h2 style={{ margin: 0, color: colors.primary }}>👤 Mon Profil</h2>
-                {profileData && getRoleBadge(profileData.role)}
+        <div className="max-w-2xl mx-auto p-8">
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">👤 Mon Profil</h2>
+                {profileData && roleBadge(profileData.role?.code || profileData.role)}
             </div>
 
-            {/* MESSAGE */}
             {message.text && (
-                <div style={{ 
-                    padding: '15px', borderRadius: '8px', marginBottom: '20px',
-                    backgroundColor: message.type === 'success' ? '#DCFCE7' : message.type === 'danger' ? '#FEE2E2' : '#FEF3C7',
-                    color: message.type === 'success' ? '#166534' : message.type === 'danger' ? '#991B1B' : '#92400E'
-                }}>
+                <div className={`${message.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : message.type === 'danger' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-yellow-50 border-yellow-200 text-yellow-700'} border rounded-md p-3 mb-4`}>
                     {message.text}
                 </div>
             )}
 
-            {/* INFORMATIONS DU PROFIL */}
-            <div style={styles.card}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-                    <h3 style={{ margin: 0, color: colors.primary, fontSize: '18px' }}>Informations Personnelles</h3>
-                    {!isEditing && (
-                        <button 
-                            onClick={() => setIsEditing(true)} 
-                            style={{ border: 'none', background: 'transparent', color: colors.info, cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}
-                        >
-                            ✏️ Modifier
-                        </button>
-                    )}
+            <div className={cardClass}>
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold">Informations Personnelles</h3>
+                    {!isEditing && <button onClick={() => setIsEditing(true)} className="text-blue-600 font-bold">✏️ Modifier</button>}
                 </div>
 
-                {/* Avatar placeholder */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '25px', paddingBottom: '25px', borderBottom: '1px solid #F1F5F9' }}>
-                    <div style={{ 
-                        width: '80px', height: '80px', borderRadius: '50%', backgroundColor: colors.primary, 
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '32px', fontWeight: 'bold' 
-                    }}>
-                        {profileData?.nom?.charAt(0)?.toUpperCase() || 'U'}
-                    </div>
+                <div className="flex items-center gap-6 mb-6 border-b pb-6">
+                    <div className="w-20 h-20 rounded-full bg-indigo-700 text-white flex items-center justify-center text-3xl font-bold">{profileData?.nom?.charAt(0)?.toUpperCase() || 'U'}</div>
                     <div>
-                        <div style={{ fontSize: '20px', fontWeight: 'bold', color: colors.primary }}>
-                            {profileData?.nom} {profileData?.prenom}
-                        </div>
-                        <div style={{ fontSize: '14px', color: colors.secondary }}>{profileData?.email}</div>
-                        <div style={{ fontSize: '12px', color: colors.secondary, marginTop: '5px' }}>
-                            Membre depuis: {profileData?.date_creation ? new Date(profileData.date_creation).toLocaleDateString('fr-FR') : 'N/A'}
-                        </div>
+                        <div className="text-lg font-bold text-gray-800">{profileData?.nom} {profileData?.prenom}</div>
+                        <div className="text-sm text-gray-500">{profileData?.email}</div>
                     </div>
                 </div>
 
                 <form onSubmit={handleProfileUpdate}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label style={styles.label}>NOM</label>
-                            <input 
-                                type="text" 
-                                value={formData.nom} 
-                                onChange={(e) => setFormData({...formData, nom: e.target.value})}
-                                disabled={!isEditing}
-                                style={{ ...styles.input, backgroundColor: isEditing ? 'white' : '#F8FAFC' }}
-                            />
+                            <label className="text-sm font-semibold text-gray-700 mb-2 block">NOM</label>
+                            <input type="text" value={formData.nom} onChange={(e) => setFormData({ ...formData, nom: e.target.value })} disabled={!isEditing} className={`${inputClass} ${isEditing ? '' : 'bg-gray-50'}`} />
                         </div>
                         <div>
-                            <label style={styles.label}>PRÉNOM</label>
-                            <input 
-                                type="text" 
-                                value={formData.prenom} 
-                                onChange={(e) => setFormData({...formData, prenom: e.target.value})}
-                                disabled={!isEditing}
-                                style={{ ...styles.input, backgroundColor: isEditing ? 'white' : '#F8FAFC' }}
-                            />
+                            <label className="text-sm font-semibold text-gray-700 mb-2 block">PRÉNOM</label>
+                            <input type="text" value={formData.prenom} onChange={(e) => setFormData({ ...formData, prenom: e.target.value })} disabled={!isEditing} className={`${inputClass} ${isEditing ? '' : 'bg-gray-50'}`} />
                         </div>
                     </div>
-                    <div style={{ marginTop: '15px' }}>
-                        <label style={styles.label}>EMAIL</label>
-                        <input 
-                            type="email" 
-                            value={formData.email} 
-                            onChange={(e) => setFormData({...formData, email: e.target.value})}
-                            disabled={!isEditing}
-                            style={{ ...styles.input, backgroundColor: isEditing ? 'white' : '#F8FAFC' }}
-                        />
+                    <div className="mt-4">
+                        <label className="text-sm font-semibold text-gray-700 mb-2 block">EMAIL</label>
+                        <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} disabled={!isEditing} className={`${inputClass} ${isEditing ? '' : 'bg-gray-50'}`} />
                     </div>
 
                     {isEditing && (
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                            <button type="submit" style={styles.button}>Enregistrer</button>
-                            <button 
-                                type="button" 
-                                onClick={() => { 
-                                    setIsEditing(false); 
-                                    setFormData({ nom: profileData?.nom || '', prenom: profileData?.prenom || '', email: profileData?.email || '' });
-                                }} 
-                                style={{ ...styles.button, backgroundColor: colors.secondary }}
-                            >
-                                Annuler
-                            </button>
+                        <div className="flex gap-3 mt-4">
+                            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md">Enregistrer</button>
+                            <button type="button" onClick={() => { setIsEditing(false); setFormData({ nom: profileData?.nom || '', prenom: profileData?.prenom || '', email: profileData?.email || '' }); }} className="px-4 py-2 bg-gray-200 rounded-md">Annuler</button>
                         </div>
                     )}
                 </form>
             </div>
 
-            {/* SÉCURITÉ - MOT DE PASSE */}
-            <div style={styles.card}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h3 style={{ margin: 0, color: colors.primary, fontSize: '18px' }}>🔐 Sécurité</h3>
-                    {!showPasswordForm && (
-                        <button 
-                            onClick={() => setShowPasswordForm(true)} 
-                            style={{ border: 'none', background: 'transparent', color: colors.warning, cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}
-                        >
-                            Changer le mot de passe
-                        </button>
-                    )}
+            <div className={cardClass}>
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">🔐 Sécurité</h3>
+                    {!showPasswordForm && <button onClick={() => setShowPasswordForm(true)} className="text-yellow-600 font-bold">Changer le mot de passe</button>}
                 </div>
 
                 {showPasswordForm ? (
                     <form onSubmit={handlePasswordChange}>
-                        <div style={{ display: 'grid', gap: '15px' }}>
+                        <div className="grid gap-4">
                             <div>
-                                <label style={styles.label}>MOT DE PASSE ACTUEL</label>
-                                <input 
-                                    type="password" 
-                                    value={passwordData.currentPassword} 
-                                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                                    style={styles.input}
-                                />
+                                <label className="text-sm font-semibold text-gray-700 mb-2 block">MOT DE PASSE ACTUEL</label>
+                                <input type="password" value={passwordData.currentPassword} onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })} className={inputClass} />
                             </div>
                             <div>
-                                <label style={styles.label}>NOUVEAU MOT DE PASSE</label>
-                                <input 
-                                    type="password" 
-                                    value={passwordData.newPassword} 
-                                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                                    style={styles.input}
-                                />
+                                <label className="text-sm font-semibold text-gray-700 mb-2 block">NOUVEAU MOT DE PASSE</label>
+                                <input type="password" value={passwordData.newPassword} onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })} className={inputClass} />
                             </div>
                             <div>
-                                <label style={styles.label}>CONFIRMER LE NOUVEAU MOT DE PASSE</label>
-                                <input 
-                                    type="password" 
-                                    value={passwordData.confirmPassword} 
-                                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                                    style={styles.input}
-                                />
+                                <label className="text-sm font-semibold text-gray-700 mb-2 block">CONFIRMER LE NOUVEAU MOT DE PASSE</label>
+                                <input type="password" value={passwordData.confirmPassword} onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })} className={inputClass} />
                             </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                            <button type="submit" style={styles.button}>Modifier le mot de passe</button>
-                            <button 
-                                type="button" 
-                                onClick={() => { 
-                                    setShowPasswordForm(false); 
-                                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-                                }} 
-                                style={{ ...styles.button, backgroundColor: colors.secondary }}
-                            >
-                                Annuler
-                            </button>
+                        <div className="flex gap-3 mt-4">
+                            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md">Modifier le mot de passe</button>
+                            <button type="button" onClick={() => { setShowPasswordForm(false); setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' }); }} className="px-4 py-2 bg-gray-200 rounded-md">Annuler</button>
                         </div>
                     </form>
                 ) : (
-                    <div style={{ padding: '20px', backgroundColor: '#F8FAFC', borderRadius: '8px', textAlign: 'center' }}>
-                        <p style={{ margin: 0, color: colors.secondary }}>Cliquez sur "Changer le mot de passe" pour modifier votre mot de passe.</p>
-                    </div>
+                    <div className="p-4 bg-gray-50 rounded text-center">Cliquez sur "Changer le mot de passe" pour modifier votre mot de passe.</div>
                 )}
             </div>
 
-            {/* DÉCONNEXION */}
-            <div style={{ textAlign: 'center', marginTop: '30px' }}>
-                <button 
-                    onClick={onLogout} 
-                    style={{ 
-                        padding: '15px 40px', 
-                        background: 'white', 
-                        border: '2px solid', 
-                        borderColor: colors.danger, 
-                        color: colors.danger, 
-                        borderRadius: '8px', 
-                        cursor: 'pointer', 
-                        fontWeight: 'bold',
-                        fontSize: '14px'
-                    }}
-                >
-                    🚪 Se déconnecter
-                </button>
+            <div className="text-center mt-6">
+                <button onClick={onLogout} className="px-6 py-3 bg-white border-2 border-red-600 text-red-600 rounded-md font-bold">🚪 Se déconnecter</button>
             </div>
         </div>
     );

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiCall } from '../config/api.js';
 
 const Soutenances = ({ user }) => {
     const [formData, setFormData] = useState({ id_memoire: '', date_soutenance: '', heure_soutenance: '', salle: '' });
@@ -22,14 +23,9 @@ const Soutenances = ({ user }) => {
         accent: '#7C3AED'
     };
 
-    const getAuthHeaders = () => ({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-    });
-
     const fetchOptions = async () => {
         try {
-            const res = await fetch('/api/soutenances/form-data', { headers: getAuthHeaders() });
+            const res = await apiCall('/api/soutenances/form-data');
             const data = await res.json();
             setOptions(data);
         } catch (error) { console.error("Erreur options", error); }
@@ -37,7 +33,7 @@ const Soutenances = ({ user }) => {
 
     const fetchSoutenances = async () => {
         try {
-            const res = await fetch('/api/soutenances', { headers: getAuthHeaders() });
+            const res = await apiCall('/api/soutenances');
             const data = await res.json();
             setSoutenances(data);
         } catch (error) { console.error("Erreur soutenances", error); }
@@ -67,13 +63,9 @@ const Soutenances = ({ user }) => {
         setMessage({ text: 'Planification en cours...', type: 'info' });
 
         try {
-            const res = await fetch('/api/soutenances/add', {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ ...formData, jury: juryArray })
-            });
+            const res = await apiCall('/api/soutenances/add', { method: 'POST', body: JSON.stringify({ ...formData, jury: juryArray }) });
             const data = await res.json();
-            
+
             if (res.ok) {
                 setMessage({ text: "✅ Soutenance planifiée avec succès !", type: 'success' });
                 setFormData({ id_memoire: '', date_soutenance: '', heure_soutenance: '', salle: '' });
@@ -81,10 +73,10 @@ const Soutenances = ({ user }) => {
                 fetchSoutenances();
                 fetchOptions();
             } else {
-                setMessage({ text: "❌ Erreur : " + data.message, type: 'danger' });
+                setMessage({ text: "❌ Erreur : " + (data.message || 'Erreur'), type: 'danger' });
             }
-        } catch (error) { 
-            setMessage({ text: "❌ Erreur serveur", type: 'danger' }); 
+        } catch (error) {
+            setMessage({ text: "❌ Erreur serveur", type: 'danger' });
         }
     };
 
@@ -92,11 +84,7 @@ const Soutenances = ({ user }) => {
         if (!window.confirm("Êtes-vous sûr de vouloir marquer cette soutenance comme terminée ?")) return;
         
         try {
-            const res = await fetch(`/api/soutenances/${id}`, {
-                method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ statut_soutenance: 'Terminée' })
-            });
+            const res = await apiCall(`/api/soutenances/${id}`, { method: 'PUT', body: JSON.stringify({ statut_soutenance: 'Terminée' }) });
             if (res.ok) {
                 setMessage({ text: "✅ Soutenance marquée comme terminée !", type: 'success' });
                 fetchSoutenances();
@@ -118,16 +106,12 @@ const Soutenances = ({ user }) => {
         }
 
         try {
-            const res = await fetch(`/api/soutenances/${selectedSoutenance.id_soutenance}`, {
-                method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ 
-                    date_soutenance: editData.date_soutenance,
-                    heure_soutenance: editData.heure_soutenance,
-                    salle: editData.salle,
-                    statut_soutenance: 'Ajournée' 
-                })
-            });
+            const res = await apiCall(`/api/soutenances/${selectedSoutenance.id_soutenance}`, { method: 'PUT', body: JSON.stringify({ 
+                date_soutenance: editData.date_soutenance,
+                heure_soutenance: editData.heure_soutenance,
+                salle: editData.salle,
+                statut_soutenance: 'Ajournée' 
+            }) });
             if (res.ok) {
                 setMessage({ text: "✅ Soutenance ajournée avec succès !", type: 'success' });
                 setShowModal(false);
@@ -157,73 +141,45 @@ const Soutenances = ({ user }) => {
 
     const stats = getStats();
 
-    const styles = {
-        card: { backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)', marginBottom: '30px' },
-        input: { padding: '12px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '14px', width: '100%', boxSizing: 'border-box' },
-        label: { display: 'block', fontSize: '12px', fontWeight: 'bold', color: colors.primary, marginBottom: '5px', marginTop: '10px' },
-        badge: (s) => {
-            const config = {
-                'Planifiée': { bg: '#DBEAFE', color: '#1D4ED8' },
-                'Terminée': { bg: '#DCFCE7', color: '#166534' },
-                'Ajournée': { bg: '#FEE2E2', color: '#991B1B' }
-            };
-            const c = config[s] || config['Planifiée'];
-            return { padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', backgroundColor: c.bg, color: c.color };
-        },
-        actionBtn: { padding: '8px 12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', marginRight: '5px' }
-    };
+    const cardClass = 'bg-white rounded-lg shadow p-6 mb-6';
+    const inputClass = 'w-full px-3 py-2 border rounded-md';
+    const labelClass = 'block text-sm font-semibold text-gray-700 mb-2';
+    const badgeClass = (s) => s === 'Planifiée' ? 'bg-blue-100 text-blue-700' : s === 'Terminée' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
 
     return (
-        <div style={{ animation: 'fadeIn 0.5s ease' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-                <h2 style={{ margin: 0, color: colors.primary }}>📅 Planification des Soutenances</h2>
+        <div className="p-8">
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">📅 Planification des Soutenances</h2>
             </div>
 
-            {/* STATS */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '25px' }}>
-                <div style={{ ...styles.card, padding: '15px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: colors.primary }}>{stats.total}</div>
-                    <div style={{ fontSize: '12px', color: colors.secondary }}>Total</div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className={cardClass + ' text-center'}>
+                    <div className="text-2xl font-bold text-gray-800">{stats.total}</div>
+                    <div className="text-sm text-gray-500">Total</div>
                 </div>
-                <div style={{ ...styles.card, padding: '15px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: colors.info }}>{stats.planifiees}</div>
-                    <div style={{ fontSize: '12px', color: colors.secondary }}>Planifiées</div>
+                <div className={cardClass + ' text-center'}>
+                    <div className="text-2xl font-bold text-blue-600">{stats.planifiees}</div>
+                    <div className="text-sm text-gray-500">Planifiées</div>
                 </div>
-                <div style={{ ...styles.card, padding: '15px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: colors.success }}>{stats.terminees}</div>
-                    <div style={{ fontSize: '12px', color: colors.secondary }}>Terminées</div>
+                <div className={cardClass + ' text-center'}>
+                    <div className="text-2xl font-bold text-green-600">{stats.terminees}</div>
+                    <div className="text-sm text-gray-500">Terminées</div>
                 </div>
-                <div style={{ ...styles.card, padding: '15px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: colors.danger }}>{stats.ajournees}</div>
-                    <div style={{ fontSize: '12px', color: colors.secondary }}>Ajournées</div>
+                <div className={cardClass + ' text-center'}>
+                    <div className="text-2xl font-bold text-red-600">{stats.ajournees}</div>
+                    <div className="text-sm text-gray-500">Ajournées</div>
                 </div>
             </div>
 
-            {/* MESSAGE */}
             {message.text && (
-                <div style={{ 
-                    padding: '15px', borderRadius: '8px', marginBottom: '20px',
-                    backgroundColor: message.type === 'success' ? '#DCFCE7' : message.type === 'danger' ? '#FEE2E2' : '#FEF3C7',
-                    color: message.type === 'success' ? '#166534' : message.type === 'danger' ? '#991B1B' : '#92400E'
-                }}>
+                <div className={`${message.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : message.type === 'danger' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-yellow-50 border-yellow-200 text-yellow-700'} border rounded-md p-3 mb-4`}>
                     {message.text}
                 </div>
             )}
 
-            {/* RECHERCHE ET FILTRE */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                <input 
-                    type="text" 
-                    placeholder="🔍 Rechercher par étudiant, thème ou salle..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{ padding: '12px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '14px', width: '300px' }}
-                />
-                <select 
-                    value={filterStatut} 
-                    onChange={(e) => setFilterStatut(e.target.value)}
-                    style={{ padding: '12px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '14px' }}
-                >
+            <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6">
+                <input type="text" placeholder="🔍 Rechercher par étudiant, thème ou salle..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="px-3 py-2 border rounded-md w-full md:w-80" />
+                <select value={filterStatut} onChange={(e) => setFilterStatut(e.target.value)} className="px-3 py-2 border rounded-md w-full md:w-56">
                     <option value="all">Tous les statuts</option>
                     <option value="Planifiée">Planifiées</option>
                     <option value="Terminée">Terminées</option>
@@ -231,192 +187,131 @@ const Soutenances = ({ user }) => {
                 </select>
             </div>
 
-            {/* FORMULAIRE DE PLANIFICATION */}
-            <div style={{ ...styles.card, borderLeft: `5px solid ${colors.accent}` }}>
-                <h3 style={{ marginTop: 0, fontSize: '18px', color: colors.primary }}>➕ Nouvelle Soutenance</h3>
+            <div className={cardClass + ' border-l-4 border-indigo-500'}>
+                <h3 className="text-lg font-semibold mb-4">➕ Nouvelle Soutenance</h3>
                 <form onSubmit={handleSubmit}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '15px' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
-                            <label style={styles.label}>MÉMOIRE À SOUTENIR</label>
-                            <select name="id_memoire" onChange={handleChange} value={formData.id_memoire} required style={styles.input}>
+                            <label className={labelClass}>MÉMOIRE À SOUTENIR</label>
+                            <select name="id_memoire" onChange={handleChange} value={formData.id_memoire} required className={inputClass}>
                                 <option value="">Choisir un mémoire...</option>
                                 {options.memoires?.map(m => <option key={m.id_memoire} value={m.id_memoire}>{m.titre}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label style={styles.label}>SALLE</label>
-                            <input name="salle" placeholder="Ex: Amphi A" onChange={handleChange} value={formData.salle} required style={styles.input} />
+                            <label className={labelClass}>SALLE</label>
+                            <input name="salle" placeholder="Ex: Amphi A" onChange={handleChange} value={formData.salle} required className={inputClass} />
                         </div>
                         <div>
-                            <label style={styles.label}>DATE</label>
-                            <input name="date_soutenance" type="date" onChange={handleChange} value={formData.date_soutenance} required style={styles.input} />
+                            <label className={labelClass}>DATE</label>
+                            <input name="date_soutenance" type="date" onChange={handleChange} value={formData.date_soutenance} required className={inputClass} />
                         </div>
                         <div>
-                            <label style={styles.label}>HEURE</label>
-                            <input name="heure_soutenance" type="time" onChange={handleChange} value={formData.heure_soutenance} required style={styles.input} />
+                            <label className={labelClass}>HEURE</label>
+                            <input name="heure_soutenance" type="time" onChange={handleChange} value={formData.heure_soutenance} required className={inputClass} />
                         </div>
                     </div>
 
-                    <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#F1F5F9', borderRadius: '8px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>COMPOSITION DU JURY</span>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginTop: '10px' }}>
-                            <select name="president" onChange={handleJuryChange} value={jury.president} required style={styles.input}>
+                    <div className="mt-4 p-4 bg-gray-50 rounded">
+                        <span className="text-sm font-semibold text-gray-700">COMPOSITION DU JURY</span>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                            <select name="president" onChange={handleJuryChange} value={jury.president} required className={inputClass}>
                                 <option value="">Président *</option>
                                 {options.enseignants?.map(e => <option key={e.id_enseignant} value={e.id_enseignant}>{e.nom} {e.prenom}</option>)}
                             </select>
-                            <select name="rapporteur" onChange={handleJuryChange} value={jury.rapporteur} required style={styles.input}>
+                            <select name="rapporteur" onChange={handleJuryChange} value={jury.rapporteur} required className={inputClass}>
                                 <option value="">Rapporteur *</option>
                                 {options.enseignants?.map(e => <option key={e.id_enseignant} value={e.id_enseignant}>{e.nom} {e.prenom}</option>)}
                             </select>
-                            <select name="examinateur" onChange={handleJuryChange} value={jury.examinateur} style={styles.input}>
+                            <select name="examinateur" onChange={handleJuryChange} value={jury.examinateur} className={inputClass}>
                                 <option value="">Examinateur</option>
                                 {options.enseignants?.map(e => <option key={e.id_enseignant} value={e.id_enseignant}>{e.nom} {e.prenom}</option>)}
                             </select>
                         </div>
                     </div>
 
-                    <button type="submit" style={{ marginTop: '20px', padding: '12px 30px', backgroundColor: colors.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                        Confirmer la planification
-                    </button>
+                    <button type="submit" className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md font-bold">Confirmer la planification</button>
                 </form>
             </div>
 
-            {/* TABLEAU DES SOUTENANCES */}
-            <div style={{ ...styles.card, padding: '10px' }}>
-                <div style={{ padding: '15px 20px', borderBottom: '1px solid #F1F5F9' }}>
-                    <h3 style={{ margin: 0, fontSize: '16px' }}>Soutenances ({filteredSoutenances.length})</h3>
+            <div className={cardClass + ' p-0'}>
+                <div className="px-4 py-3 border-b">
+                    <h3 className="m-0 text-lg">Soutenances ({filteredSoutenances.length})</h3>
                 </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                        <tr style={{ textAlign: 'left', fontSize: '12px', color: colors.secondary }}>
-                            <th style={{ padding: '15px' }}>DATE & HEURE</th>
-                            <th style={{ padding: '15px' }}>IMPÉTRANT & SUJET</th>
-                            <th style={{ padding: '15px' }}>SALLE</th>
-                            <th style={{ padding: '15px' }}>STATUT</th>
-                            <th style={{ padding: '15px' }}>ACTIONS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredSoutenances.length > 0 ? filteredSoutenances.map((sout) => (
-                            <tr key={sout.id_soutenance} style={{ borderBottom: '1px solid #F1F5F9', transition: '0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#F8FAFC'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                                <td style={{ padding: '15px' }}>
-                                    <div style={{ fontWeight: 'bold', color: colors.primary }}>
-                                        {new Date(sout.date_soutenance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                    </div>
-                                    <div style={{ fontSize: '12px', color: colors.secondary }}>🕒 {sout.heure_soutenance || '--:--'}</div>
-                                </td>
-                                <td style={{ padding: '15px' }}>
-                                    <div style={{ fontWeight: '600', color: colors.primary }}>{sout.nom_etudiant} {sout.prenom_etudiant}</div>
-                                    <div style={{ fontSize: '12px', color: colors.secondary, maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {sout.theme_titre}
-                                    </div>
-                                </td>
-                                <td style={{ padding: '15px' }}>
-                                    <span style={{ padding: '4px 10px', backgroundColor: '#E2E8F0', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }}>
-                                        {sout.salle}
-                                    </span>
-                                </td>
-                                <td style={{ padding: '15px' }}>
-                                    <span style={styles.badge(sout.statut_soutenance)}>{sout.statut_soutenance}</span>
-                                </td>
-                                <td style={{ padding: '15px' }}>
-                                    {sout.statut_soutenance === 'Planifiée' && (
-                                        <div style={{ display: 'flex', gap: '5px' }}>
-                                            <button 
-                                                onClick={() => handleTerminer(sout.id_soutenance)} 
-                                                style={{ ...styles.actionBtn, backgroundColor: colors.success, color: 'white' }}
-                                            >
-                                                ✓ Terminer
-                                            </button>
-                                            <button 
-                                                onClick={() => handleAjourner(sout.id_soutenance)} 
-                                                style={{ ...styles.actionBtn, backgroundColor: colors.warning, color: 'white' }}
-                                            >
-                                                ⏰ Ajourner
-                                            </button>
-                                        </div>
-                                    )}
-                                    {sout.statut_soutenance === 'Terminée' && (
-                                        <span style={{ color: colors.success, fontWeight: 'bold', fontSize: '14px' }}>✓ Validée</span>
-                                    )}
-                                    {sout.statut_soutenance === 'Ajournée' && (
-                                        <button 
-                                            onClick={() => handleTerminer(sout.id_soutenance)} 
-                                            style={{ ...styles.actionBtn, backgroundColor: colors.success, color: 'white' }}
-                                        >
-                                            ✓ Marquer Terminée
-                                        </button>
-                                    )}
-                                </td>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                        <thead>
+                            <tr className="text-left text-sm text-gray-500">
+                                <th className="px-4 py-3">DATE & HEURE</th>
+                                <th className="px-4 py-3">IMPÉTRANT & SUJET</th>
+                                <th className="px-4 py-3">SALLE</th>
+                                <th className="px-4 py-3">STATUT</th>
+                                <th className="px-4 py-3">ACTIONS</th>
                             </tr>
-                        )) : (
-                            <tr>
-                                <td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: colors.secondary }}>
-                                    Aucune soutenance trouvée.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {filteredSoutenances.length > 0 ? filteredSoutenances.map((sout) => (
+                                <tr key={sout.id_soutenance} className="hover:bg-gray-50 transition">
+                                    <td className="px-4 py-4">
+                                        <div className="font-bold text-gray-800">{new Date(sout.date_soutenance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                                        <div className="text-sm text-gray-500">🕒 {sout.heure_soutenance || '--:--'}</div>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                        <div className="font-semibold text-gray-800">{sout.nom_etudiant} {sout.prenom_etudiant}</div>
+                                        <div className="text-sm text-gray-500 max-w-xs truncate">{sout.theme_titre}</div>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                        <span className="px-3 py-1 bg-gray-100 rounded text-sm font-bold">{sout.salle}</span>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                        <span className={`px-2 py-1 rounded-full text-sm font-bold ${badgeClass(sout.statut_soutenance)}`}>{sout.statut_soutenance}</span>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                        {sout.statut_soutenance === 'Planifiée' && (
+                                            <div className="flex gap-2">
+                                                <button onClick={() => handleTerminer(sout.id_soutenance)} className="px-3 py-1 bg-green-600 text-white rounded">✓ Terminer</button>
+                                                <button onClick={() => handleAjourner(sout.id_soutenance)} className="px-3 py-1 bg-yellow-500 text-white rounded">⏰ Ajourner</button>
+                                            </div>
+                                        )}
+                                        {sout.statut_soutenance === 'Terminée' && (
+                                            <span className="text-green-600 font-bold text-sm">✓ Validée</span>
+                                        )}
+                                        {sout.statut_soutenance === 'Ajournée' && (
+                                            <button onClick={() => handleTerminer(sout.id_soutenance)} className="px-3 py-1 bg-green-600 text-white rounded">✓ Marquer Terminée</button>
+                                        )}
+                                    </td>
+                                </tr>
+                            )) : (
+                                <tr>
+                                    <td colSpan="5" className="p-10 text-center text-gray-500">Aucune soutenance trouvée.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            {/* MODAL AJOURNEMENT */}
             {showModal && selectedSoutenance && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 1000
-                }}>
-                    <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', width: '450px', maxWidth: '90%' }}>
-                        <h3 style={{ marginTop: 0, color: colors.primary }}>Ajourner la Soutenance</h3>
-                        <p style={{ color: colors.secondary, fontSize: '14px' }}>
-                            Étudiant: <strong>{selectedSoutenance.nom_etudiant} {selectedSoutenance.prenom_etudiant}</strong>
-                        </p>
-                        <form onSubmit={submitAjournement}>
-                            <div style={{ marginTop: '15px' }}>
-                                <label style={styles.label}>NOUVELLE DATE</label>
-                                <input 
-                                    type="date" 
-                                    value={editData.date_soutenance}
-                                    onChange={(e) => setEditData({ ...editData, date_soutenance: e.target.value })}
-                                    required
-                                    style={styles.input}
-                                />
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg w-full max-w-md">
+                        <h3 className="text-lg font-semibold">Ajourner la Soutenance</h3>
+                        <p className="text-sm text-gray-600">Étudiant: <strong>{selectedSoutenance.nom_etudiant} {selectedSoutenance.prenom_etudiant}</strong></p>
+                        <form onSubmit={submitAjournement} className="mt-4">
+                            <div className="mb-3">
+                                <label className={labelClass}>NOUVELLE DATE</label>
+                                <input type="date" value={editData.date_soutenance} onChange={(e) => setEditData({ ...editData, date_soutenance: e.target.value })} required className={inputClass} />
                             </div>
-                            <div style={{ marginTop: '15px' }}>
-                                <label style={styles.label}>NOUVELLE HEURE</label>
-                                <input 
-                                    type="time" 
-                                    value={editData.heure_soutenance}
-                                    onChange={(e) => setEditData({ ...editData, heure_soutenance: e.target.value })}
-                                    style={styles.input}
-                                />
+                            <div className="mb-3">
+                                <label className={labelClass}>NOUVELLE HEURE</label>
+                                <input type="time" value={editData.heure_soutenance} onChange={(e) => setEditData({ ...editData, heure_soutenance: e.target.value })} className={inputClass} />
                             </div>
-                            <div style={{ marginTop: '15px' }}>
-                                <label style={styles.label}>NOUVELLE SALLE</label>
-                                <input 
-                                    type="text" 
-                                    value={editData.salle}
-                                    onChange={(e) => setEditData({ ...editData, salle: e.target.value })}
-                                    required
-                                    placeholder="Nouvelle salle"
-                                    style={styles.input}
-                                />
+                            <div className="mb-4">
+                                <label className={labelClass}>NOUVELLE SALLE</label>
+                                <input type="text" value={editData.salle} onChange={(e) => setEditData({ ...editData, salle: e.target.value })} required placeholder="Nouvelle salle" className={inputClass} />
                             </div>
-                            <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                                <button 
-                                    type="button" 
-                                    onClick={() => setShowModal(false)}
-                                    style={{ ...styles.actionBtn, padding: '10px 20px', backgroundColor: colors.secondary, color: 'white' }}
-                                >
-                                    Annuler
-                                </button>
-                                <button 
-                                    type="submit" 
-                                    style={{ ...styles.actionBtn, padding: '10px 20px', backgroundColor: colors.warning, color: 'white' }}
-                                >
-                                    Confirmer l'ajournement
-                                </button>
+                            <div className="flex justify-end gap-2">
+                                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 bg-gray-300 rounded">Annuler</button>
+                                <button type="submit" className="px-4 py-2 bg-yellow-500 text-white rounded">Confirmer l'ajournement</button>
                             </div>
                         </form>
                     </div>

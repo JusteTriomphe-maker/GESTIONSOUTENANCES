@@ -1,10 +1,13 @@
 import express from 'express';
+import { verifyToken } from '../middleware/securityMiddleware.js';
+import { checkPermission } from '../middleware/authorizationMiddleware.js';
 import { createAttribution, getAllAttributions, getFormData } from '../controllers/attributionController.js';
 
 const router = express.Router();
 
-router.post('/add', createAttribution);
-router.get('/', getAllAttributions);
-router.get('/form-data', getFormData); // Pour les dropdowns
+// COORDONNATEUR seulement pour les attributions directeur
+router.post('/add', verifyToken, checkPermission('UC-ADM-01'), createAttribution);
+router.get('/', verifyToken, checkPermission('UC-ADM-01'), getAllAttributions);
+router.get('/form-data', verifyToken, checkPermission('UC-ADM-01'), getFormData);
 
 export default router;

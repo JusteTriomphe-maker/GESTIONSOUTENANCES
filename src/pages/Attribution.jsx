@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiCall } from '../config/api.js';
 
 const Attribution = () => {
     const [formData, setFormData] = useState({ id_impetrant: '', id_enseignant: '', id_theme: '' });
@@ -10,35 +11,27 @@ const Attribution = () => {
     const [selectedAttribution, setSelectedAttribution] = useState(null);
     const [newTeacherId, setNewTeacherId] = useState('');
 
-    const colors = {
-        primary: '#234666',
-        secondary: '#64748B',
-        success: '#10B981',
-        danger: '#D34053',
-        warning: '#F59E0B',
-        info: '#3C50E0'
-    };
-
-    const getAuthHeaders = () => ({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-    });
+    // Utilisation de `apiCall` centralisé pour gérer l'Authorization header
 
     // Charger les données du formulaire (Dropdowns)
     const fetchOptions = async () => {
         try {
-            const res = await fetch('/api/attributions/form-data', { headers: getAuthHeaders() });
-            const data = await res.json();
-            setOptions(data);
+            const res = await apiCall('/api/attributions/form-data');
+            if (res.ok) {
+                const data = await res.json();
+                setOptions(data);
+            }
         } catch (error) { console.error(error); }
     };
 
     // Charger la liste des attributions
     const fetchAttributions = async () => {
         try {
-            const res = await fetch('/api/attributions', { headers: getAuthHeaders() });
-            const data = await res.json();
-            setAttributions(data);
+            const res = await apiCall('/api/attributions');
+            if (res.ok) {
+                const data = await res.json();
+                setAttributions(data);
+            }
         } catch (error) { console.error(error); }
     };
 
@@ -55,9 +48,8 @@ const Attribution = () => {
         e.preventDefault();
         setMessage({ text: 'Traitement...', type: 'info' });
         try {
-            const res = await fetch('/api/attributions/add', {
+            const res = await apiCall('/api/attributions/add', {
                 method: 'POST',
-                headers: getAuthHeaders(),
                 body: JSON.stringify(formData)
             });
             const data = await res.json();
@@ -79,10 +71,7 @@ const Attribution = () => {
         if (!window.confirm("Êtes-vous sûr de vouloir annuler cette attribution ?")) return;
         
         try {
-            const res = await fetch(`/api/attributions/cancel/${id}`, {
-                method: 'PUT',
-                headers: getAuthHeaders()
-            });
+            const res = await apiCall(`/api/attributions/cancel/${id}`, { method: 'PUT' });
             const data = await res.json();
             
             if (res.ok) {
@@ -111,9 +100,8 @@ const Attribution = () => {
         }
         
         try {
-            const res = await fetch(`/api/attributions/change/${selectedAttribution.id_attribution}`, {
+            const res = await apiCall(`/api/attributions/change/${selectedAttribution.id_attribution}`, {
                 method: 'PUT',
-                headers: getAuthHeaders(),
                 body: JSON.stringify({ id_enseignant: newTeacherId })
             });
             const data = await res.json();
@@ -142,157 +130,109 @@ const Attribution = () => {
                attr.theme_titre?.toLowerCase().includes(search);
     });
 
-    const styles = {
-        card: { backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)', marginBottom: '30px' },
-        input: { padding: '12px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', width: '100%', boxSizing: 'border-box' },
-        button: { padding: '12px 25px', backgroundColor: colors.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' },
-        th: { padding: '15px', textAlign: 'left', borderBottom: '2px solid #F1F5F9', color: colors.secondary, fontSize: '12px', textTransform: 'uppercase' },
-        td: { padding: '15px', borderBottom: '1px solid #F1F5F9', fontSize: '14px' },
-        actionBtn: { padding: '8px 12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', marginRight: '5px' }
-    };
+    // Styles moved to Tailwind classes
 
     return (
-        <div style={{ animation: 'fadeIn 0.5s ease' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-                <h2 style={{ margin: 0, color: colors.primary }}>🤝 Attribution des Directeurs de Mémoire</h2>
-                <div style={{ backgroundColor: colors.primary, color: 'white', padding: '5px 15px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>
-                    {attributions.length} Attributions
-                </div>
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <h2 className="text-[#234666] text-lg font-semibold">🤝 Attribution des Directeurs de Mémoire</h2>
+                <div className="bg-[#234666] text-white px-4 py-1 rounded-full text-sm font-bold">{attributions.length} Attributions</div>
             </div>
 
-            {/* MESSAGE */}
             {message.text && (
-                <div style={{ 
-                    padding: '15px', borderRadius: '8px', marginBottom: '20px',
-                    backgroundColor: message.type === 'success' ? '#DCFCE7' : message.type === 'danger' ? '#FEE2E2' : '#FEF3C7',
-                    color: message.type === 'success' ? '#166534' : message.type === 'danger' ? '#991B1B' : '#92400E'
-                }}>
+                <div className={`p-4 rounded-md mb-4 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-800' : message.type === 'danger' ? 'bg-red-50 text-red-800' : 'bg-yellow-50 text-yellow-800'}`}>
                     {message.text}
                 </div>
             )}
 
-            {/* RECHERCHE */}
-            <div style={{ marginBottom: '20px' }}>
-                <input 
-                    type="text" 
-                    placeholder="🔍 Rechercher par étudiant, enseignant ou thème..." 
+            <div>
+                <input
+                    type="text"
+                    placeholder="🔍 Rechercher par étudiant, enseignant ou thème..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{ padding: '12px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', width: '350px' }}
+                    className="px-4 py-2 border rounded-md border-gray-200 w-full max-w-md"
                 />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '30px' }}>
-                {/* FORMULAIRE */}
-                <div style={styles.card}>
-                    <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '16px', color: colors.primary }}>➕ Nouvelle Attribution</h3>
-                    <form onSubmit={handleSubmit}>
-                        <div style={{ display: 'grid', gap: '15px' }}>
-                            <div>
-                                <label style={{ fontSize: '12px', color: colors.secondary, fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>IMPÉTRANT</label>
-                                <select name="id_impetrant" onChange={handleChange} value={formData.id_impetrant} required style={styles.input}>
-                                    <option value="">-- Sélectionner un Impétrant --</option>
-                                    {options.impetrants.map(imp => (
-                                        <option key={imp.id_impetrant} value={imp.id_impetrant}>
-                                            {imp.nom} {imp.prenom}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label style={{ fontSize: '12px', color: colors.secondary, fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>DIRECTEUR DE MÉMOIRE</label>
-                                <select name="id_enseignant" onChange={handleChange} value={formData.id_enseignant} required style={styles.input}>
-                                    <option value="">-- Sélectionner un Enseignant --</option>
-                                    {options.enseignants.map(ens => (
-                                        <option key={ens.id_enseignant} value={ens.id_enseignant}>
-                                            {ens.nom} {ens.prenom} ({ens.grade})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label style={{ fontSize: '12px', color: colors.secondary, fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>THÈME VALIDÉ</label>
-                                <select name="id_theme" onChange={handleChange} value={formData.id_theme} required style={styles.input}>
-                                    <option value="">-- Sélectionner un Thème --</option>
-                                    {options.themes.map(th => (
-                                        <option key={th.id_theme} value={th.id_theme}>
-                                            {th.titre}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-lg shadow">
+                    <h3 className="text-[#234666] text-md font-semibold mb-4">➕ Nouvelle Attribution</h3>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-2">IMPÉTRANT</label>
+                            <select name="id_impetrant" onChange={handleChange} value={formData.id_impetrant} required className="w-full p-3 border rounded-md border-gray-200">
+                                <option value="">-- Sélectionner un Impétrant --</option>
+                                {options.impetrants.map(imp => (
+                                    <option key={imp.id_impetrant} value={imp.id_impetrant}>{imp.nom} {imp.prenom}</option>
+                                ))}
+                            </select>
                         </div>
-                        <button type="submit" style={{ ...styles.button, width: '100%', marginTop: '20px' }}>
-                            Attribuer le directeur
-                        </button>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-2">DIRECTEUR DE MÉMOIRE</label>
+                            <select name="id_enseignant" onChange={handleChange} value={formData.id_enseignant} required className="w-full p-3 border rounded-md border-gray-200">
+                                <option value="">-- Sélectionner un Enseignant --</option>
+                                {options.enseignants.map(ens => (
+                                    <option key={ens.id_enseignant} value={ens.id_enseignant}>{ens.nom} {ens.prenom} ({ens.grade})</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-2">THÈME VALIDÉ</label>
+                            <select name="id_theme" onChange={handleChange} value={formData.id_theme} required className="w-full p-3 border rounded-md border-gray-200">
+                                <option value="">-- Sélectionner un Thème --</option>
+                                {options.themes.map(th => (
+                                    <option key={th.id_theme} value={th.id_theme}>{th.titre}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <button type="submit" className="w-full mt-2 py-3 bg-[#234666] text-white rounded-md font-semibold">Attribuer le directeur</button>
                     </form>
                 </div>
 
-                {/* LISTE DES ATTRIBUTIONS */}
-                <div style={{ ...styles.card, padding: '10px' }}>
-                    <div style={{ padding: '15px 20px', borderBottom: '1px solid #F1F5F9' }}>
-                        <h3 style={{ margin: 0, fontSize: '16px' }}>Attributions en cours ({filteredAttributions.length})</h3>
+                <div className="md:col-span-2 bg-white rounded-lg shadow p-2">
+                    <div className="px-4 py-3 border-b">
+                        <h3 className="m-0 text-md">Attributions en cours ({filteredAttributions.length})</h3>
                     </div>
-                    <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <div className="max-h-[500px] overflow-y-auto">
+                        <table className="min-w-full table-auto">
                             <thead>
-                                <tr>
-                                    <th style={styles.th}>Étudiant</th>
-                                    <th style={styles.th}>Directeur</th>
-                                    <th style={styles.th}>Thème</th>
-                                    <th style={styles.th}>Date</th>
-                                    <th style={styles.th}>Actions</th>
+                                <tr className="text-xs text-gray-500 uppercase">
+                                    <th className="px-4 py-3 text-left">Étudiant</th>
+                                    <th className="px-4 py-3 text-left">Directeur</th>
+                                    <th className="px-4 py-3 text-left">Thème</th>
+                                    <th className="px-4 py-3 text-left">Date</th>
+                                    <th className="px-4 py-3 text-left">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredAttributions.length > 0 ? filteredAttributions.map((attr) => (
-                                    <tr key={attr.id_attribution} style={{ transition: '0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#F8FAFC'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                                        <td style={styles.td}>
-                                            <div style={{ fontWeight: '600', color: colors.primary }}>{attr.nom_etudiant} {attr.prenom_etudiant}</div>
+                                    <tr key={attr.id_attribution} className="hover:bg-gray-50 transition">
+                                        <td className="px-4 py-4">
+                                            <div className="font-semibold text-[#234666]">{attr.nom_etudiant} {attr.prenom_etudiant}</div>
                                         </td>
-                                        <td style={styles.td}>
-                                            <div style={{ fontWeight: '500' }}>{attr.nom_ens} {attr.prenom_ens}</div>
-                                            <div style={{ fontSize: '11px', color: colors.secondary }}>{attr.grade_ens}</div>
+                                        <td className="px-4 py-4">
+                                            <div className="font-medium">{attr.nom_ens} {attr.prenom_ens}</div>
+                                            <div className="text-xs text-gray-500">{attr.grade_ens}</div>
                                         </td>
-                                        <td style={styles.td}>
-                                            <div style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {attr.theme_titre}
-                                            </div>
-                                            <span style={{ 
-                                                padding: '2px 8px', borderRadius: '4px', fontSize: '10px', 
-                                                backgroundColor: attr.statut_theme === 'Validé' ? '#DCFCE7' : '#FEF3C7',
-                                                color: attr.statut_theme === 'Validé' ? '#166534' : '#92400E'
-                                            }}>
-                                                {attr.statut_theme}
-                                            </span>
+                                        <td className="px-4 py-4">
+                                            <div className="max-w-[200px] truncate">{attr.theme_titre}</div>
+                                            <span className={`inline-block mt-2 text-xs px-2 py-1 rounded ${attr.statut_theme === 'Validé' ? 'bg-emerald-100 text-emerald-800' : 'bg-yellow-100 text-yellow-800'}`}>{attr.statut_theme}</span>
                                         </td>
-                                        <td style={styles.td}>
-                                            <div style={{ fontSize: '12px', color: colors.secondary }}>
-                                                {new Date(attr.date_attribution).toLocaleDateString('fr-FR')}
-                                            </div>
+                                        <td className="px-4 py-4">
+                                            <div className="text-sm text-gray-500">{new Date(attr.date_attribution).toLocaleDateString('fr-FR')}</div>
                                         </td>
-                                        <td style={styles.td}>
-                                            <button 
-                                                onClick={() => handleOpenChangeModal(attr)}
-                                                style={{ ...styles.actionBtn, backgroundColor: '#DBEAFE', color: '#1D4ED8' }}
-                                            >
-                                                🔄 Changer
-                                            </button>
-                                            <button 
-                                                onClick={() => handleCancel(attr.id_attribution)}
-                                                style={{ ...styles.actionBtn, backgroundColor: '#FEE2E2', color: '#991B1B' }}
-                                            >
-                                                ❌ Annuler
-                                            </button>
+                                        <td className="px-4 py-4">
+                                            <button onClick={() => handleOpenChangeModal(attr)} className="text-sm mr-2 px-3 py-1 rounded bg-blue-50 text-blue-700">🔄 Changer</button>
+                                            <button onClick={() => handleCancel(attr.id_attribution)} className="text-sm px-3 py-1 rounded bg-red-50 text-red-700">❌ Annuler</button>
                                         </td>
                                     </tr>
                                 )) : (
                                     <tr>
-                                        <td colSpan="5" style={{ ...styles.td, textAlign: 'center', padding: '40px', color: colors.secondary }}>
-                                            Aucune attribution trouvée.
-                                        </td>
+                                        <td colSpan="5" className="text-center py-20 text-gray-500">Aucune attribution trouvée.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -303,45 +243,26 @@ const Attribution = () => {
 
             {/* MODAL CHANGEMENT DIRECTEUR */}
             {showChangeModal && selectedAttribution && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 1000
-                }}>
-                    <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', width: '500px', maxWidth: '90%' }}>
-                        <h3 style={{ marginTop: 0, color: colors.primary }}>Changer le Directeur de Mémoire</h3>
-                        <p style={{ color: colors.secondary, fontSize: '14px' }}>
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg w-full max-w-lg">
+                        <h3 className="text-[#234666] text-lg font-semibold">Changer le Directeur de Mémoire</h3>
+                        <p className="text-gray-500 text-sm">
                             Étudiant: <strong>{selectedAttribution.nom_etudiant} {selectedAttribution.prenom_etudiant}</strong><br/>
                             Directeur actuel: <strong>{selectedAttribution.nom_ens} {selectedAttribution.prenom_ens}</strong>
                         </p>
                         <form onSubmit={handleChangeDirector}>
-                            <div style={{ marginTop: '15px' }}>
-                                <label style={{ fontSize: '12px', color: colors.secondary, fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>NOUVEAU DIRECTEUR</label>
-                                <select 
-                                    value={newTeacherId} 
-                                    onChange={(e) => setNewTeacherId(e.target.value)}
-                                    required
-                                    style={styles.input}
-                                >
+                            <div className="mt-4">
+                                <label className="text-xs font-bold text-gray-500 block mb-2">NOUVEAU DIRECTEUR</label>
+                                <select value={newTeacherId} onChange={(e) => setNewTeacherId(e.target.value)} required className="w-full p-3 border rounded-md border-gray-200">
                                     <option value="">-- Sélectionner un nouvel enseignant --</option>
                                     {options.enseignants.map(ens => (
-                                        <option key={ens.id_enseignant} value={ens.id_enseignant}>
-                                            {ens.nom} {ens.prenom} ({ens.grade})
-                                        </option>
+                                        <option key={ens.id_enseignant} value={ens.id_enseignant}>{ens.nom} {ens.prenom} ({ens.grade})</option>
                                     ))}
                                 </select>
                             </div>
-                            <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                                <button 
-                                    type="button" 
-                                    onClick={() => { setShowChangeModal(false); setSelectedAttribution(null); }}
-                                    style={{ ...styles.button, backgroundColor: colors.secondary }}
-                                >
-                                    Annuler
-                                </button>
-                                <button type="submit" style={styles.button}>
-                                    Confirmer le changement
-                                </button>
+                            <div className="mt-5 flex gap-3 justify-end">
+                                <button type="button" onClick={() => { setShowChangeModal(false); setSelectedAttribution(null); }} className="px-4 py-2 rounded-md bg-gray-200">Annuler</button>
+                                <button type="submit" className="px-4 py-2 rounded-md bg-[#234666] text-white">Confirmer le changement</button>
                             </div>
                         </form>
                     </div>
